@@ -1,6 +1,7 @@
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 require 'stretchy'
 require 'awesome_print'
+require 'pry'
 
 SPEC_INDEX    = 'stretchy_test'
 FIXTURE_TYPE  = 'game_dev'
@@ -22,21 +23,15 @@ MAPPING  = {
   }
 }
 
-Stretchy.configure do |c|
-  c.index_name = SPEC_INDEX
-end
-
 RSpec.configure do |config|
 
   config.before(:suite) do
-    Stretchy.delete
-    Stretchy.create
-    Stretchy.mapping(Stretchy.index_name, FIXTURE_TYPE, MAPPING)
-    Stretchy.refresh
+    Stretchy.client.indices.delete(index: SPEC_INDEX)
+    Stretchy.client.indices.create(index: SPEC_INDEX, body: {mappings: MAPPING})
     FIXTURES.each do |name, data|
-      Stretchy.index(type: FIXTURE_TYPE, body: data)
+      Stretchy.client.index(index: SPEC_INDEX, type: FIXTURE_TYPE, id: data['id'], body: data)
     end
-    Stretchy.refresh
+    Stretchy.client.indices.refresh(index: SPEC_INDEX)
   end
 
 end

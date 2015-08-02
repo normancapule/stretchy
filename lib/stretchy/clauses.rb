@@ -1,6 +1,0 @@
-require 'stretchy/clauses/base'
-require 'stretchy/clauses/match_clause'
-require 'stretchy/clauses/where_clause'
-require 'stretchy/clauses/boost_clause'
-require 'stretchy/clauses/boost_match_clause'
-require 'stretchy/clauses/boost_where_clause'
