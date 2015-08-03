@@ -18,26 +18,26 @@ describe 'Filters' do
     expect(scores.all?{|s| s == scores.first}).to eq(true)
   end
 
-  it 'runs a basic filter' do
+  specify 'basic filter' do
     check(subject.filter(terms: {id: [found['id'], extra['id']]}))
   end
 
-  it 'runs multiple filters' do
+  specify 'multiple filters' do
     check subject.filter(terms: {id: [found['id'], extra['id']]})
                  .filter(term: {url_slug: found['url_slug']})
   end
 
-  it 'runs a not filter' do
+  specify 'not filter' do
     check subject.not.filter(term: {id: not_found['id']})
   end
 
   # these are kind of useless except minimum_should_match
-  it 'runs should filters' do
+  specify 'should filters' do
     check subject.should.filter(terms: {id: [found['id'], extra['id']]})
                  .should.filter(term: {url_slug: found['url_slug']})
   end
 
-  it 'runs a query filter' do
+  specify 'query filter' do
     check subject.filter.query(match: {_all: 'Gamecube'})
   end
 

@@ -7,7 +7,7 @@ module Stretchy
       Node.new(params, context)
     end
 
-    def where_nodes(params, context = [])
+    def where_nodes(params, context = Set.new)
       params.map do |field, val|
         case val
         when Range
@@ -20,46 +20,46 @@ module Stretchy
       end
     end
 
-    def match_nodes(params, context = [])
+    def match_nodes(params, context = Set.new)
       params.map do |field, val|
         match_node({field: field, value: val}, context)
       end
     end
 
-    def terms_node(params, context = [])
+    def terms_node(params, context = Set.new)
       Node.new(
         { terms: { params[:field] => params[:values] } },
         context
       )
     end
 
-    def match_node(params, context = [])
+    def match_node(params, context = Set.new)
       Node.new(
         { match: { params[:field] => params[:value] }},
         context
       )
     end
 
-    def match_all_node(context = [])
+    def match_all_node(context = Set.new)
       Node.new({match: {all: {}}}, context)
     end
 
-    def range_node(params, context = [])
+    def range_node(params, context = Set.new)
       json = {}
       json[:gte] = params[:gte] if params[:gte]
       json[:lte] = params[:lte] if params[:lte]
       Node.new({range: {params[:field] => json}}, context)
     end
 
-    def missing_node(field, context = [])
+    def missing_node(field, context = Set.new)
       Node.new({missing: { field: field }}, context)
     end
 
-    def not_filter_node(node, context = [])
+    def not_filter_node(node, context = Set.new)
       Node.new({not: node.json }, context)
     end
 
-    def query_filter_node(node, context = [])
+    def query_filter_node(node, context = Set.new)
       Node.new(
         { query: node.json },
         context
@@ -73,7 +73,7 @@ module Stretchy
       Node.new({ filtered: json}, options[:context] || [])
     end
 
-    def bool_node(nodes, context = [])
+    def bool_node(nodes, context = Set.new)
       must_not = nodes.select{|n| n.context.include?(:must_not) }
       should   = nodes.select{|n| n.context.include?(:should) }
       must     = nodes - must_not - should
@@ -84,23 +84,23 @@ module Stretchy
       Node.new({bool: json}, context)
     end
 
-    def field_value_function_node(params = {}, context = [])
+    def field_value_function_node(params = {}, context = Set.new)
       Node.new({field_value_factor: params}, context)
     end
 
-    def filter_function_nodes(nodes, params = {}, context = [])
+    def filter_function_nodes(nodes, params = {}, context = Set.new)
       nodes.map {|n| filter_function_node(n, params, context)}
     end
 
-    def filter_function_node(node, params = {}, context = [])
+    def filter_function_node(node, params = {}, context = Set.new)
       Node.new(params.merge(filter: node.json), context)
     end
 
-    def random_score_function_node(seed, context = [])
+    def random_score_function_node(seed, context = Set.new)
       Node.new({random_score: { seed: seed}}, context)
     end
 
-    def decay_function_node(params = {}, context = [])
+    def decay_function_node(params = {}, context = Set.new)
       decay_fn = params.delete(:decay_function)
       field    = params.delete(:field)
       Node.new({decay_fn => { field => params}}, context)

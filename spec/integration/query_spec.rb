@@ -13,19 +13,19 @@ describe 'Queries' do
     expect(ids).to_not include(not_found['id'])
   end
 
-  it 'runs a basic query' do
+  specify 'basic query' do
     check(subject.query(match: { name: "sakurai"}))
   end
 
-  it 'runs a basic filter' do
+  specify 'basic filter' do
     check(subject.query(term: { url_slug: found['url_slug']}))
   end
 
-  it 'runs a not query' do
+  specify 'not query' do
     check(subject.not.query(term: { url_slug: not_found['url_slug']}))
   end
 
-  it 'runs a should query' do
+  specify 'should query' do
     q = subject.should.query(match: { name: found['name']})
                .should.query(match: { 'games.platforms' => 'GameCube' })
     sakurai = q.results.find {|r| r['id'] == found['id'] }
@@ -36,8 +36,13 @@ describe 'Queries' do
     expect(q.ids).to include(extra['id'])
     expect(q.ids).to_not include(not_found['id'])
 
-    # but .should affects the document score - more matchs == higher score
+    # but .should affects the document score: more matchs == higher score
     expect(sakurai['_score']).to be > suda['_score']
+  end
+
+  specify 'explain' do
+    results = subject.explain.match(_all: found['name']).results
+    expect(results.first['_explanation']).to_not be_empty
   end
 
 end
