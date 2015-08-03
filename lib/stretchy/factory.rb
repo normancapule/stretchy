@@ -15,14 +15,14 @@ module Stretchy
         when nil
           missing_node(field, context)
         else
-          terms_node({field: field, values: Array(val)})
+          terms_node({field: field, values: Array(val)}, context)
         end
       end
     end
 
     def match_nodes(params, context = [])
       params.map do |field, val|
-        match_node(field: field, values: val)
+        match_node({field: field, value: val}, context)
       end
     end
 
@@ -38,6 +38,10 @@ module Stretchy
         { match: { params[:field] => params[:value] }},
         context
       )
+    end
+
+    def match_all_node(context = [])
+      Node.new({match: {all: {}}}, context)
     end
 
     def range_node(params, context = [])
@@ -78,6 +82,28 @@ module Stretchy
       json[:must_not] = must_not.map(&:json)  if must_not.any?
       json[:should]   = should.map(&:json)    if should.any?
       Node.new({bool: json}, context)
+    end
+
+    def field_value_function_node(params = {}, context = [])
+      Node.new({field_value_factor: params}, context)
+    end
+
+    def filter_function_nodes(nodes, params = {}, context = [])
+      nodes.map {|n| filter_function_node(n, params, context)}
+    end
+
+    def filter_function_node(node, params = {}, context = [])
+      Node.new(params.merge(filter: node.json), context)
+    end
+
+    def random_score_function_node(seed, context = [])
+      Node.new({random_score: { seed: seed}}, context)
+    end
+
+    def decay_function_node(params = {}, context = [])
+      decay_fn = params.delete(:decay_function)
+      field    = params.delete(:field)
+      Node.new({decay_fn => { field => params}}, context)
     end
 
     def function_score_query_node(options = {})

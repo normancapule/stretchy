@@ -12,7 +12,7 @@ module Stretchy
     end
 
     def node
-      if any_nodes?(:function)
+      if any_nodes?(:boost)
         function_score_node
       elsif any_nodes?(:filter)
         filtered_query_node
@@ -22,11 +22,11 @@ module Stretchy
     end
 
     def select_nodes(context, s_nodes = nodes)
-      s_nodes.select {|n| n.context.include?(context) }
+      s_nodes.select {|n| n.context?(context) }
     end
 
     def any_nodes?(context, s_nodes = nodes)
-      s_nodes.any? {|n| n.context.include?(context) }
+      s_nodes.any? {|n| n.context?(context) }
     end
 
     def bool_or_first(b_nodes)
@@ -40,31 +40,43 @@ module Stretchy
       end
     end
 
+    def query_nodes
+      select_nodes(:query).reject do |n|
+        n.context?(:filter) || n.context?(:where) || n.context?(:boost)
+      end
+    end
+
+    def filter_nodes
+      select_nodes(:filter).reject do |n|
+        n.context?(:boost)
+      end
+    end
+
     def query_node
-      bool_or_first(
-        select_nodes(:query).reject{|n| n.context.include?(:filter)}
-      )
+      bool_or_first(query_nodes)
     end
 
     def filter_node
-      bool_or_first(select_nodes(:filter))
+      bool_or_first(filter_nodes)
     end
 
     def filtered_query_node
-      Factory.filtered_query_node(
-        query:  query_node,
-        filter: filter_node
-      )
+      options = {}
+      options[:query] = query_node   if query_nodes.any?
+      options[:filter] = filter_node if filter_nodes.any?
+      Factory.filtered_query_node(options)
     end
 
     def function_score_node
-      options = {functions: select_nodes(:function)}
-      if any_nodes?(:filter) && any_nodes?(:query)
+      options = {functions: select_nodes(:boost)}
+      if query_nodes.any? && filter_nodes.any?
         options[:query]  = filtered_query_node
-      elsif any_nodes?(:filter)
+      elsif filter_nodes.any?
         options[:filter] = filter_node
+      elsif query_nodes.any?
+        options[:query]  = query_node
       else
-        options[:query]  = bool_or_first(select_nodes(:query))
+        options[:query]
       end
 
       Factory.function_score_query_node(options)

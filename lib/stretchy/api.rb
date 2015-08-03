@@ -1,6 +1,11 @@
 module Stretchy
   class API
 
+    DEFAULT_BOOST = 1.2
+
+    extend Forwardable
+    delegate [:json] => :collector
+
     attr_reader :collector, :root, :context
 
     def initialize(options = {})
@@ -15,12 +20,24 @@ module Stretchy
 
     def where(params = {})
       return add_context(:where, :filter) unless params.any?
-      add_nodes Factory.where_nodes(params, context + [:where, :filter])
+      @context += [:where, :filter]
+      if context?(:boost)
+        add_nodes boost_filters(params)
+      else
+        add_nodes Factory.where_nodes(params, context)
+      end
     end
 
     def match(params = {})
       return add_context(:match, :query) unless params.any?
-      add_nodes Factory.match_nodes(params, context + [:match, :query])
+      @context += [:match, :query]
+      if context?(:boost)
+        add_nodes boost_match_filters(params)
+      elsif context?(:where) || context?(:filter)
+        add_nodes match_filters(params)
+      else
+        add_nodes Factory.match_nodes(params, context)
+      end
     end
 
     def query(params = {})
@@ -33,33 +50,48 @@ module Stretchy
       add_nodes Factory.raw_node(params, context + [:filter])
     end
 
-    def or(params = {})
-      return add_context(:or) unless params.any?
-      add_nodes params
+    def boost(params = {})
+      return add_context(:boost) unless params.any?
+      add_nodes Factory.raw_node(params, context + [:function])
+    end
+
+    def field_value(params = {})
+      @context << :boost
+      add_nodes Factory.field_value_function_node(params, context)
+    end
+
+    def random(seed)
+      @context << :boost
+      add_nodes Factory.random_score_function_node(seed, context)
+    end
+
+    def near(params = {})
+      @context << :boost
+      add_nodes Factory.decay_function_node(params, context)
     end
 
     def should(params = {})
       return add_context(:should) unless params.any?
       @context << :should
-      if context?(:where)
-        where(params)
+      if context?(:query)
+        add_nodes Factory.match_nodes(params, context)
       else
-        match(params)
+        add_nodes Factory.where_nodes(params, context)
       end
     end
 
     def not(params = {})
       return add_context(:must_not) unless params.any?
       @context << :must_not
-      if context?(:where)
-        where(params)
+      if context?(:query) || context?(:match)
+        add_nodes Factory.match_nodes(params, context)
       else
-        match(params)
+        add_nodes Factory.where_nodes(params, context)
       end
     end
 
     def request
-      @request ||= root.merge(body: {query: collector.json})
+      @request ||= root.merge(body: {query: json})
     end
 
     def response
@@ -85,10 +117,7 @@ module Stretchy
       end
 
       def add_nodes(additional)
-        new_nodes = Array(additional).map do |n|
-          coerce_query_filter(n)
-        end
-        self.class.new nodes: collector.nodes + new_nodes, root: root
+        self.class.new nodes: collector.nodes + Array(additional), root: root
       end
 
       def add_context(*args)
@@ -96,12 +125,32 @@ module Stretchy
         self
       end
 
-      def coerce_query_filter(n)
-        if n.context?(:query, :filter)
-          Factory.query_filter_node(n, n.context)
-        else
-          n
+      def context?(*args)
+        args.all? {|c| context.include?(c) }
+      end
+
+      def match_filters(params = {})
+        Factory.match_nodes(params, context).map do |n|
+          Factory.query_filter_node(n, context)
         end
+      end
+
+      def boost_filters(params = {})
+        options = {}
+        options[:weight] = params.delete(:weight) || DEFAULT_BOOST
+        boost_nodes = Factory.where_nodes(params, context)
+        Factory.filter_function_nodes(
+          boost_nodes, options, context
+        )
+      end
+
+      def boost_match_filters(params = {})
+        options = {}
+        options[:weight] = params.delete(:weight) || DEFAULT_BOOST
+        boost_nodes = match_filters(params)
+        Factory.filter_function_nodes(
+          boost_nodes, options, context
+        )
       end
 
   end
