@@ -14,7 +14,7 @@ describe 'Queries' do
   end
 
   specify 'basic query' do
-    check(subject.query(match: { name: "sakurai"}))
+    check subject.query(match: { name: "sakurai"})
   end
 
   specify 'basic filter' do

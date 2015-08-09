@@ -8,8 +8,7 @@ describe 'Boosts' do
   subject { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE) }
 
   def check(api)
-    scores = Hash[api.results.map {|r| [r['id'].to_i, r['_score']]}]
-    expect(scores[found['id']]).to be > scores[not_found['id']]
+    expect(api.scores[found['id']]).to be > api.scores[not_found['id']]
   end
 
   specify 'filter' do
@@ -39,6 +38,10 @@ describe 'Boosts' do
   end
 
   specify 'not filter' do
+    check subject.boost.where.not(url_slug: not_found['url_slug'])
+  end
+
+  specify 'not matching' do
     check subject.boost.match.not(name: not_found['name'])
   end
 

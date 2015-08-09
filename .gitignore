@@ -10,3 +10,4 @@
 .rspec
 *.gem
 TODO*
+*.atom*

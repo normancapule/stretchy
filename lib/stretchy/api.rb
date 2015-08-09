@@ -1,7 +1,8 @@
 module Stretchy
   class API
 
-    DEFAULT_BOOST = 2.0
+    DEFAULT_BOOST     = 2.0
+    DEFAULT_PER_PAGE  = 10
 
     extend Forwardable
     delegate [:json] => :collector
@@ -11,11 +12,32 @@ module Stretchy
     def initialize(options = {})
       @collector  = Collector.new(options[:nodes] || [])
       @root       = options[:root]     || {}
-      @context    = options[:context]  || Set.new
+      @context    = options[:context]  || {}
     end
 
-    def context?(kind)
-      context.include?(kind)
+    def limit(size)
+      @root[:size] = size
+      self
+    end
+    alias :size :limit
+
+    def offset(from)
+      @root[:from] = from
+      self
+    end
+    alias :from :offset
+
+    def page(num, options = {})
+      size = options[:per_page] || @root[:from] || DEFAULT_PER_PAGE
+      from = ([num.to_i, 1].max - 1) * size
+      from += 1 unless from == 0
+      @root[:from] = from
+      @root[:size] = size
+      self
+    end
+
+    def context?(*args)
+      (args - context.keys).empty?
     end
 
     def explain
@@ -24,67 +46,62 @@ module Stretchy
     end
 
     def where(params = {})
-      return add_context(:where, :filter) unless params.any?
-      @context += [:where, :filter]
-      if context?(:boost)
-        add_nodes boost_filters(params)
-      else
-        add_nodes Factory.where_nodes(params, context)
-      end
+      add_context(:where, :filter)
+      return self unless params.any?
+
+      add_nodes Factory.where_nodes(params, context)
     end
 
     def match(params = {})
-      return add_context(:match, :query) unless params.any?
-      @context += [:match, :query]
-      if context?(:boost)
-        add_nodes boost_match_filters(params)
-      elsif context?(:where) || context?(:filter)
-        add_nodes match_filters(params)
-      else
-        add_nodes Factory.match_nodes(params, context)
-      end
+      add_context(:match, :query)
+      return self unless params.any?
+
+      add_nodes Factory.match_nodes(params, context)
     end
 
     def query(params = {})
-      return add_context(:query) unless params.any?
-      @context << :query
-      if context?(:where) || context?(:filter)
-        add_nodes Factory.query_filter_node(
-          Factory.raw_node(params, context), context
-        )
-      else
-        add_nodes Factory.raw_node(params, context)
-      end
+      add_context(:query)
+      return self unless params.any?
+
+      add_nodes Factory.raw_node(params, context)
     end
 
     def filter(params = {})
-      return add_context(:filter) unless params.any?
-      add_nodes Factory.raw_node(params, context + [:filter])
+      add_context(:filter)
+      return self unless params.any?
+
+      add_nodes Factory.raw_node(params, context)
     end
 
     def boost(params = {})
-      return add_context(:boost) unless params.any?
-      add_nodes Factory.raw_node(params, context + [:function])
+      add_context(:boost)
+      return self unless params.any?
+
+      add_nodes Factory.raw_node(params, context)
     end
 
     def field_value(params = {})
-      @context << :boost
+      add_context(boost: :raw)
+
       add_nodes Factory.field_value_function_node(params, context)
     end
 
     def random(seed)
-      @context << :boost
+      add_context(boost: :raw)
+
       add_nodes Factory.random_score_function_node(seed, context)
     end
 
     def near(params = {})
-      @context << :boost
+      add_context(boost: :raw)
+
       add_nodes Factory.decay_function_node(params, context)
     end
 
     def should(params = {})
-      return add_context(:should) unless params.any?
-      @context << :should
+      add_context(:should)
+      return self unless params.any?
+
       if context?(:query)
         add_nodes Factory.match_nodes(params, context)
       else
@@ -93,12 +110,13 @@ module Stretchy
     end
 
     def not(params = {})
-      return add_context(:must_not) unless params.any?
-      @context << :must_not
+      add_context(:must_not)
+      return self unless params.any?
+
       if context?(:query) || context?(:match)
-        match params
+        add_nodes Factory.match_nodes(params, context)
       else
-        where params
+        add_nodes Factory.where_nodes(params, context)
       end
     end
 
@@ -122,6 +140,16 @@ module Stretchy
       @ids ||= response['hits']['hits'].map {|r| coerce_id r['_id'] }
     end
 
+    def scores
+      @scores ||= Hash[results.map {|r| [coerce_id(r['_id']), r['_score']]}]
+    end
+
+    def explanations
+      @explanations ||= Hash[results.map {|r|
+        [coerce_id(r['_id']), r['_explanation']]
+      }]
+    end
+
     private
 
       def coerce_id(id)
@@ -133,44 +161,11 @@ module Stretchy
       end
 
       def add_context(*args)
-        @context += args
+        to_merge = args.reduce({}) do |ctx, item|
+          item.is_a?(Hash) ? ctx.merge(item) : ctx.merge({item => true})
+        end
+        @context = context.merge(to_merge)
         self
-      end
-
-      def context?(*args)
-        args.all? {|c| context.include?(c) }
-      end
-
-      def wrap_must_not(nodes)
-        nodes.map do |n|
-          next n unless n.context?(:filter) || n.context?(:where)
-          next n unless n.context?(:must_not)
-          Factory.not_filter_node(n, n.context)
-        end
-      end
-
-      def match_filters(params = {})
-        Factory.match_nodes(params, context).map do |n|
-          Factory.query_filter_node(n, n.context + [:filter])
-        end
-      end
-
-      def boost_filters(params = {})
-        options = {}
-        options[:weight] = params.delete(:weight) || DEFAULT_BOOST
-        boost_nodes = wrap_must_not Factory.where_nodes(params, context)
-        Factory.filter_function_nodes(
-          boost_nodes, options, context
-        )
-      end
-
-      def boost_match_filters(params = {})
-        options = {}
-        options[:weight] = params.delete(:weight) || DEFAULT_BOOST
-        boost_nodes = wrap_must_not match_filters(params)
-        Factory.filter_function_nodes(
-          boost_nodes, options, context
-        )
       end
 
   end

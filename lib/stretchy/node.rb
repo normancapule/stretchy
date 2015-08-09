@@ -3,13 +3,13 @@ module Stretchy
 
     attr_reader :json, :context
 
-    def initialize(json, context = [])
+    def initialize(json, context = {})
       @json    = json
       @context = context
     end
 
     def context?(*args)
-      args.all? {|c| context.include?(c) }
+      args.all? {|c| context.keys.include?(c) }
     end
 
   end
