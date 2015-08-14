@@ -15,11 +15,26 @@ describe Stretchy::Filters::RangeFilter do
     subject.new(*args).to_search[:range]
   end
 
-  it 'returns json for range filter' do
-    result = get_result(field, min: min, max: max)
-    expect(result[field]).to be_a(Hash)
-    expect(result[field][:gte]).to eq(min)
-    expect(result[field][:lte]).to eq(max)
+  describe 'returns json for range filter' do
+    specify "inclusive range" do
+      result = get_result(field, min: min, max: max)
+      expect(result[field]).to match({ gte: min, lte: max })
+    end
+
+    specify "exclusive range" do
+      result = get_result(field, exclusive: true, min: min, max: max)
+      expect(result[field]).to match({ gt: min, lt: max })
+    end
+
+    specify "exclusive range operators" do
+      result = get_result(field, exclusive_min: true, min: min, exclusive_max: max, max: max)
+      expect(result[field]).to match({ gt: min, lt: max })
+    end
+
+    specify "mixed range operators" do
+      result = get_result(field, exclusive_min: min, min: min, max: max)
+      expect(result[field]).to match({ gt: min, lte: max })
+    end
   end
 
   it 'accepts dates for min / max' do

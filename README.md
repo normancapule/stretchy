@@ -204,9 +204,10 @@ Stretchy tries to merge together filters on the same fields to optimize the fina
 query = query.range(:rating, min: 3, max: 5)
              .range(:released, min: Time.now - 60*60*24*100)
              .range(:quantity, max: 100, exclusive: true)
+             .range(:awesomeness, min: 89, max: 100, exclusive_min: true)
 ```
 
-Only documents with the specified field, and within the specified range match. You can also pass in dates and times as ranges. While you could pass a normal ruby `Range` object to `.where`, this allows you to specify only a minimum or only a maximum. Range filters are inclusive by default, but you can also pass `:exclusive`, `:exclusive_min`, or `:exclusive_max`.
+Only documents with the specified field, and within the specified range match. You can also pass in dates and times as ranges. While you could pass a normal ruby `Range` object to `.where`, this allows you to specify only a minimum or only a maximum. Range filters are inclusive by default, but you can also pass `:exclusive`, `:exclusive_min`, or `:exclusive_max`, which are flags declaring either or both of the `min` & `max` parameters to be exclusive.
 
 ### <a id="geo-distance"></a>Geo Distance
 
