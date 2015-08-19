@@ -2,6 +2,7 @@ module Stretchy
   class Node
 
     attr_reader :json, :context
+    alias :as_json :json
 
     def initialize(json, context = {})
       @json    = json
@@ -9,7 +10,7 @@ module Stretchy
     end
 
     def context?(*args)
-      args.all? {|c| context.keys.include?(c) }
+      args.all? {|c| !!context[c] }
     end
 
   end

@@ -10,7 +10,7 @@ module Stretchy
     attr_reader :collector, :root, :context
 
     def initialize(options = {})
-      @collector  = Collector.new(options[:nodes] || [])
+      @collector  = AndCollector.new(options[:nodes] || [])
       @root       = options[:root]     || {}
       @context    = options[:context]  || {}
     end
@@ -46,17 +46,17 @@ module Stretchy
     end
 
     def where(params = {})
-      add_context(:where, :filter)
+      add_context(:filter)
       return self unless params.any?
 
-      add_nodes Factory.where_nodes(params, context)
+      add_nodes Factory.context_nodes(params, context)
     end
 
     def match(params = {})
-      add_context(:match, :query)
+      add_context(:query)
       return self unless params.any?
 
-      add_nodes Factory.match_nodes(params, context)
+      add_nodes Factory.context_nodes(params, context)
     end
 
     def query(params = {})
@@ -102,26 +102,18 @@ module Stretchy
       add_context(:should)
       return self unless params.any?
 
-      if context?(:query)
-        add_nodes Factory.match_nodes(params, context)
-      else
-        add_nodes Factory.where_nodes(params, context)
-      end
+      add_nodes Factory.context_nodes(params, context)
     end
 
     def not(params = {})
       add_context(:must_not)
       return self unless params.any?
 
-      if context?(:query) || context?(:match)
-        add_nodes Factory.match_nodes(params, context)
-      else
-        add_nodes Factory.where_nodes(params, context)
-      end
+      add_nodes Factory.context_nodes(params, context)
     end
 
     def request
-      @request ||= root.merge(body: {query: json})
+      @request ||= root.merge(body: {query: collector.as_json})
     end
 
     def response

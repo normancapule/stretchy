@@ -24,149 +24,117 @@ module Stretchy
       Node.new(params, context)
     end
 
-    def where_nodes(params, context = default_context)
-      params.map do |field, val|
-        case val
-        when Range
-          range_node({field: field, gte: val.min, lte: val.max}, context)
-        when nil
-          missing_node(field, context)
+    def context_nodes(params, context = default_context)
+      if context[:boost]
+        params_to_boost(params, context)
+      elsif context[:query]
+        params_to_queries(params, context)
+      else
+        params_to_filters(params, context)
+      end
+    end
+
+    def params_to_boost(params, context = default_context)
+      boost_params = Hash[BOOST_OPTIONS.map do |opt|
+        [opt, params.delete(opt)]
+      end].keep_if {|k,v| !!v}
+      boost_params = {weight: DEFAULT_WEIGHT} unless boost_params.any?
+
+      filter = if context[:query]
+        params_to_boost_query(params, boost_params, context)
+      else
+        params_to_boost_filter(params, boost_params, context)
+      end
+    end
+
+    def params_to_boost_query(params, boost_params, context = default_context)
+      queries = params.map do |field, val|
+        {match: {field => {query: val}}}
+      end
+
+      combined = combine_bools_by_context(queries, context)
+      Node.new(
+        boost_params.merge(filter: {query: combined}),
+        context
+      )
+    end
+
+    def params_to_boost_filter(params, boost_params, context = default_context)
+      filters = params.map do |field, val|
+        {terms: {field => Array(val)}}
+      end
+      combined = combine_bools_by_context(filters, context)
+      Node.new(
+        boost_params.merge(filter: combined),
+        context
+      )
+    end
+
+    def combine_bools_by_context(bools, context)
+      if bools.count == 1 &&
+         !(context[:must_not] || context[:should])
+
+        bools.first
+      else
+        if context[:should]
+          if context[:must_not]
+            {bool: {should: {bool: {must_not: bools}}}}
+          else
+            {bool: {should: bools}}
+          end
         else
-          terms_node({field: field, values: Array(val)}, context)
+          if context[:must_not]
+            {bool: {must_not: bools}}
+          else
+            {bool: {must: bools}}
+          end
         end
       end
     end
 
-    def match_nodes(params, context = default_context)
+    def params_to_queries(params, context = default_context)
       params.map do |field, val|
-        match_node({field: field, value: val}, context)
+        Node.new({match: {field => val}}, context)
       end
     end
 
-    def terms_node(params, context = default_context)
-      Node.new(
-        { terms: { params[:field] => params[:values] } },
-        context
-      )
-    end
-
-    def match_node(params, context = default_context)
-      Node.new(
-        { match: { params[:field] => params[:value] }},
-        context
-      )
-    end
-
-    def match_all_node(context = default_context)
-      Node.new({match_all: {}}, context)
-    end
-
-    def range_node(params, context = default_context)
-      json = {}
-      json[:gte] = params[:gte] if params[:gte]
-      json[:lte] = params[:lte] if params[:lte]
-      Node.new({range: {params[:field] => json}}, context)
-    end
-
-    def missing_node(field, context = default_context)
-      Node.new({missing: { field: field }}, context)
-    end
-
-    def not_filter_node(node, context = default_context)
-      Node.new({not: node.json }, context)
-    end
-
-    # ensures a node is a filter - ie, if it is a query node,
-    # wrap it into a query filter
-    def filter_node(node)
-      if node.context?(:query)
-        query_filter_node(node)
-      else
-        node
+    def params_to_filters(params, context = default_context)
+      params.map do |field, val|
+        case val
+        when Range
+          Node.new(
+            {range: {field: field, gte: val.min, lte: val.max}},
+            context
+          )
+        when nil
+          Node.new(
+            {missing: {field: field}},
+            context
+          )
+        else
+          Node.new(
+            {terms: {field => Array(val)}},
+            context
+          )
+        end
       end
     end
 
-    # turns a query node into a filter
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-filter.html
-    def query_filter_node(node)
-      Node.new(
-        { query: node.json },
-        node.context
-      )
-    end
-
-    # combines a query and filter into filtered query
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-filtered-query.html
-    def filtered_query_node(options = {})
-      json = {}
-      json[:query]  = options[:query].json  if options[:query]
-      json[:filter] = options[:filter].json if options[:filter]
-      Node.new({ filtered: json}, options[:context] || [])
-    end
-
-    # combines queries into bool query node
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html
-    #
-    # or combines filters into bool filter
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-filter.html
-    #
-    # fortunately, they use the same syntax
-    def bool_node(nodes)
-      nodes = Array(nodes)
-      return nodes.first unless nodes.count > 1 ||
-        nodes.any?{|n| n.context?(:must_not)}   ||
-        nodes.any?{|n| n.context?(:should)  }
-
-      must_not = nodes.select{|n| n.context?(:must_not) }
-      should   = nodes.select{|n| n.context?(:should) }
-      must     = nodes - must_not - should
-      json     = {}
-      json[:must]     = must.map(&:json)      if must.any?
-      json[:must_not] = must_not.map(&:json)  if must_not.any?
-      json[:should]   = should.map(&:json)    if should.any?
-      Node.new({bool: json}, default_context)
-    end
-
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html#function-field-value-factor
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functionfieldvaluefactor
     def field_value_function_node(params = {}, context = default_context)
       Node.new({field_value_factor: params}, context)
     end
 
-    # ensures node is a filter, then merges in boost params
-    def filter_function_node(node)
-      node   = filter_node(node)
-      node   = not_filter_node(node)    if node.context?(:must_not)
-
-      params = node.context[:boost]
-      params = {weight: DEFAULT_WEIGHT} unless params.is_a?(Hash)
-
-      Node.new(params.merge(filter: node.json), node.context)
-    end
-
-    # ensures node is a valid function, then merges in boost params
-    def function_node(node)
-      return node if node.context[:boost] == :raw
-      filter_function_node(node)
-    end
-
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html#function-random
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functionrandom
     def random_score_function_node(seed, context = default_context)
       Node.new({random_score: { seed: seed}}, context)
     end
 
-    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html#function-decay
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functiondecay
     def decay_function_node(params = {}, context = default_context)
       decay_fn = params.delete(:decay_function)
       field    = params.delete(:field)
       Node.new({decay_fn => { field => params}}, context)
-    end
-
-    def function_score_query_node(options = {})
-      json = {}
-      json[:functions] = options[:functions].map(&:json)
-      json[:filter]    = options[:filter].json if options[:filter]
-      json[:query]     = options[:query].json  if options[:query]
-      Node.new({function_score: json}, options[:context] || [])
     end
 
   end
