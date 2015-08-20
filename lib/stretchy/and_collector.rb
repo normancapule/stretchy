@@ -13,79 +13,83 @@ module Stretchy
       @context  = context
     end
 
+    def with_context(new_context)
+      self.class.new nodes, new_context
+    end
+
     def context?(*args)
       args.all? {|c| !!context[c] }
     end
 
     def node
-      @compiled_node ||= if context?(:filter)
-        filter_node
-      else
-        query_node
-      end
-    end
-
-    def query_node
-      @query_node ||= if boost_nodes.any?
+      @node ||= if boost_nodes.any?
         function_score_node
       elsif filter_nodes.any?
         filtered_query_node
       elsif query_nodes.any?
         single_query_node
       else
-        Node.new(match_all: {})
+        Node.new({match_all: {}}, context)
       end
     end
 
     def query_nodes
-      @query_nodes ||= nodes.select do |n|
-        n.context?(:query)    &&
-        !n.context?(:boost)   &&
+      @query_nodes ||= collect_nodes nodes do |n|
+        n.context?(:query)  &&
+        !n.context?(:boost) &&
         !n.context?(:filter)
       end
     end
 
-    def query_json
-      query_node.json
-    end
-
     def filter_node
       @filter_node ||= if query_nodes.any? || boost_nodes.any?
-        Node.new(query: filtered_query_node.json)
+        Node.new({query: filtered_query_node.json}, context)
       else
-        Node.new(compile_nodes(filter_nodes).json)
+        Node.new(compile_nodes(filter_nodes).json, context)
       end
     end
 
     def filter_nodes
-      return @filter_nodes if @filter_nodes
-      @filter_nodes = nodes.select do |n|
-        n.context?(:filter) &&
-        !n.context?(:query) &&
-        !n.context?(:boost)
+      @filter_nodes ||= begin
+        node_arr = collect_nodes nodes do |n|
+          n.context?(:filter) &&
+          !n.context?(:query) &&
+          !n.context?(:boost)
+        end
+        node_arr += Array(compile_query_filter_node)
+        node_arr.compact
       end
-      @filter_nodes += Array(compile_query_filter_node)
-      @filter_nodes.compact!
-      @filter_nodes
     end
 
     def query_filter_nodes
-      @query_filter_nodes ||= nodes.select do |n|
+      @query_filter_nodes ||= collect_nodes nodes do |n|
         n.context?(:filter) &&
         n.context?(:query)  &&
         !n.context?(:boost)
       end
     end
 
-    def filter_json
-      filter_node.json
-    end
-
     def boost_nodes
-      @boost_nodes ||= nodes.select{|n| n.context?(:boost)}
+      @boost_nodes ||= collect_nodes nodes do |n|
+        n.context?(:boost)
+      end
     end
 
     private
+
+      def collect_nodes(node_arr)
+        coll = []
+        node_arr.each do |n|
+          next unless yield(n)
+
+          if n.respond_to? :node
+            coll << Node.new(n.node.json, n.context)
+          else
+            coll << n
+          end
+        end
+        coll.compact
+      end
 
       def compile_nodes(node_arr)
         if node_arr.size > 1 ||
@@ -152,7 +156,7 @@ module Stretchy
           function_score_json[:filter]  = filter_node.json
         end
 
-        Node.new(function_score: function_score_json)
+        Node.new({function_score: function_score_json}, context)
       end
 
       def filtered_query_node
@@ -161,11 +165,11 @@ module Stretchy
         f = compile_nodes(filter_nodes)
         filtered_json[:query]   = q.json  if q
         filtered_json[:filter]  = f.json  if f
-        Node.new(filtered: filtered_json)
+        Node.new({filtered: filtered_json}, context)
       end
 
       def single_query_node
-        Node.new(compile_nodes(query_nodes).json)
+        Node.new(compile_nodes(query_nodes).json, context)
       end
 
   end

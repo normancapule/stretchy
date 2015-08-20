@@ -1,16 +1,17 @@
+require 'stretchy/utils'
+
 module Stretchy
   class API
+
+    include Utils
 
     DEFAULT_BOOST     = 2.0
     DEFAULT_PER_PAGE  = 10
 
-    extend Forwardable
-    delegate [:json] => :collector
-
     attr_reader :collector, :root, :context
 
     def initialize(options = {})
-      @collector  = AndCollector.new(options[:nodes] || [])
+      @collector  = AndCollector.new(options[:nodes] || [], query: true)
       @root       = options[:root]     || {}
       @context    = options[:context]  || {}
     end
@@ -46,70 +47,51 @@ module Stretchy
     end
 
     def where(params = {})
-      add_context(:filter)
-      return self unless params.any?
-
-      add_nodes Factory.context_nodes(params, context)
+      add_params params, :filter, :context_nodes
     end
 
     def match(params = {})
-      add_context(:query)
-      return self unless params.any?
-
-      add_nodes Factory.context_nodes(params, context)
+      add_params params, :query, :context_nodes
     end
 
     def query(params = {})
-      add_context(:query)
-      return self unless params.any?
-
-      add_nodes Factory.raw_node(params, context)
+      add_params params, :query, :raw_node
     end
 
     def filter(params = {})
-      add_context(:filter)
-      return self unless params.any?
-
-      add_nodes Factory.raw_node(params, context)
+      add_params params, :filter, :raw_node
     end
 
-    def boost(params = {})
-      add_context(:boost)
+    def boost(params = {}, options = {})
+      add_context :boost
       return self unless params.any?
 
-      add_nodes Factory.raw_node(params, context)
+      if params.is_a? self.class
+        boost_json = options.merge(filter: params.filter_node.json)
+        add_nodes Node.new(boost_json, context)
+      else
+        add_nodes Factory.raw_node(params, context)
+      end
     end
 
     def field_value(params = {})
-      add_context(boost: :raw)
-
-      add_nodes Factory.field_value_function_node(params, context)
+      add_params params, :boost, :field_value_function_node
     end
 
     def random(seed)
-      add_context(boost: :raw)
-
-      add_nodes Factory.random_score_function_node(seed, context)
+      add_params seed, :boost, :random_score_function_node
     end
 
     def near(params = {})
-      add_context(boost: :raw)
-
-      add_nodes Factory.decay_function_node(params, context)
+      add_params params, :boost, :decay_function_node
     end
 
     def should(params = {})
-      add_context(:should)
-      return self unless params.any?
-
-      add_nodes Factory.context_nodes(params, context)
+      add_params params, :should, :context_nodes
     end
 
     def not(params = {})
-      add_context(:must_not)
-      return self unless params.any?
-
-      add_nodes Factory.context_nodes(params, context)
+      add_params params, :must_not, :context_nodes
     end
 
     def request
@@ -142,10 +124,29 @@ module Stretchy
       }]
     end
 
+    def method_missing(method, *args, &block)
+      if collector.respond_to?(method)
+        collector.send(method, *args, &block)
+      else
+        super
+      end
+    end
+
     private
 
       def coerce_id(id)
         id =~ /\d+/ ? id.to_i : id
+      end
+
+      def add_params(params = {}, new_context, factory_method)
+        add_context new_context
+        return self if is_empty?(params)
+
+        if params.is_a? self.class
+          add_nodes params.with_context(context)
+        else
+          add_nodes Factory.send(factory_method, params, context)
+        end
       end
 
       def add_nodes(additional)

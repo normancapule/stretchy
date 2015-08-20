@@ -8,6 +8,7 @@ require 'stretchy/api'
 require 'stretchy/and_collector'
 require 'stretchy/factory'
 require 'stretchy/node'
+require 'stretchy/utils'
 require 'stretchy/version'
 
 # {include:file:README.md}

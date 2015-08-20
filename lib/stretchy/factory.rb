@@ -14,12 +14,6 @@ module Stretchy
       {}
     end
 
-    def extract_boost_options(params)
-      stripped = params.reject {|k,v| BOOST_OPTIONS.include?(k) }
-      options  = params.select {|k,v| BOOST_OPTIONS.include?(k) }
-      [stripped, options]
-    end
-
     def raw_node(params, context)
       Node.new(params, context)
     end
@@ -38,57 +32,19 @@ module Stretchy
       boost_params = Hash[BOOST_OPTIONS.map do |opt|
         [opt, params.delete(opt)]
       end].keep_if {|k,v| !!v}
-      boost_params = {weight: DEFAULT_WEIGHT} unless boost_params.any?
 
-      filter = if context[:query]
-        params_to_boost_query(params, boost_params, context)
+      boost_params  = {weight: DEFAULT_WEIGHT} unless boost_params.any?
+      subcontext    = context.merge(boost: nil)
+      nodes         = context_nodes(params, subcontext)
+      collector     = AndCollector.new(nodes, subcontext)
+
+      if context[:query]
+        Node.new(boost_params.merge(filter: {query: collector.json}), context)
       else
-        params_to_boost_filter(params, boost_params, context)
-      end
-    end
-
-    def params_to_boost_query(params, boost_params, context = default_context)
-      queries = params.map do |field, val|
-        {match: {field => {query: val}}}
-      end
-
-      combined = combine_bools_by_context(queries, context)
-      Node.new(
-        boost_params.merge(filter: {query: combined}),
-        context
-      )
-    end
-
-    def params_to_boost_filter(params, boost_params, context = default_context)
-      filters = params.map do |field, val|
-        {terms: {field => Array(val)}}
-      end
-      combined = combine_bools_by_context(filters, context)
-      Node.new(
-        boost_params.merge(filter: combined),
-        context
-      )
-    end
-
-    def combine_bools_by_context(bools, context)
-      if bools.count == 1 &&
-         !(context[:must_not] || context[:should])
-
-        bools.first
-      else
-        if context[:should]
-          if context[:must_not]
-            {bool: {should: {bool: {must_not: bools}}}}
-          else
-            {bool: {should: bools}}
-          end
-        else
-          if context[:must_not]
-            {bool: {must_not: bools}}
-          else
-            {bool: {must: bools}}
-          end
-        end
+        Node.new(
+          boost_params.merge(filter: collector.filter_node.json),
+          context
+        )
       end
     end
 
