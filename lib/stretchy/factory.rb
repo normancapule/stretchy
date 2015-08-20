@@ -31,7 +31,7 @@ module Stretchy
     def params_to_boost(params, context = default_context)
       boost_params = Hash[BOOST_OPTIONS.map do |opt|
         [opt, params.delete(opt)]
-      end].keep_if {|k,v| !!v}
+      end].keep_if {|k,v| !Utils.is_empty?(v) }
 
       boost_params  = {weight: DEFAULT_WEIGHT} unless boost_params.any?
       subcontext    = context.merge(boost: nil)

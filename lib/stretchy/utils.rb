@@ -1,6 +1,10 @@
 module Stretchy
   module Utils
 
+    def self.is_empty?(arg = nil)
+      UTILS.is_empty?(arg)
+    end
+
     # detects empty string, empty array, empty hash, nil
     def is_empty?(arg = nil)
       return true if arg.nil?
@@ -12,6 +16,12 @@ module Stretchy
         !arg
       end
     end
+
+    class UtilsModule
+      include Utils
+    end
+
+    UTILS = UtilsModule.new
 
   end
 end
