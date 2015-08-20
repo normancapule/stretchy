@@ -2,11 +2,14 @@ require 'stretchy/utils'
 
 module Stretchy
   class API
-
-    include Utils
-
     DEFAULT_BOOST     = 2.0
     DEFAULT_PER_PAGE  = 10
+
+    extend  Forwardable
+    include Utils::Methods
+
+    delegate [:total, :ids, :scores, :explanations, :results,
+              :aggregations] => :results
 
     attr_reader :collector, :root, :context
 
@@ -20,25 +23,34 @@ module Stretchy
       (args - context.keys).empty?
     end
 
-    def limit(size)
-      @root[:size] = size
+    def limit(size = nil)
+      return @root[:size] || DEFAULT_PER_PAGE unless size
+      @root[:size] = size.to_i
       self
     end
-    alias :size :limit
+    alias :limit_value :limit
 
-    def offset(from)
-      @root[:from] = from
+    def offset(from = nil)
+      return @root[:from] || 0 unless from
+      @root[:from] = from.to_i
       self
     end
-    alias :from :offset
 
-    def page(num, options = {})
-      size = options[:per_page] || @root[:from] || DEFAULT_PER_PAGE
-      from = ([num.to_i, 1].max - 1) * size
-      from += 1 unless from == 0
-      @root[:from] = from
-      @root[:size] = size
+    # page 1 = from: 0, size: per_page
+    # page 2 = from: per_page, size: per_page
+    def page(num = nil, params = {})
+      return current_page if num.nil?
+      per_page = params[:limit] || params[:per_page] || limit
+      per_page = per_page.to_i > 0 ? per_page : 1
+      start    = [num.to_i - 1, 0].max
+      @root[:size] = per_page
+      @root[:from] = start * per_page
       self
+    end
+
+    def current_page
+      current = [offset, 1].max
+      current > 1 ? (offset / limit).ceil + 1 : current
     end
 
     def explain
@@ -53,6 +65,11 @@ module Stretchy
 
     def where(params = {})
       add_params params, :filter, :context_nodes
+    end
+
+    def range(params = {})
+      require_context!
+      add_nodes Factory.range_node(params, context)
     end
 
     def match(params = {})
@@ -115,36 +132,7 @@ module Stretchy
     end
 
     def results
-      @results ||= response['hits']['hits'].map do |r|
-        fields = r.reject {|k, _| k == '_source'}
-        fields['_id'] = coerce_id(fields['_id']) if fields['_id']
-        r['_source'].merge(fields)
-      end
-    end
-
-    def ids
-      @ids ||= response['hits']['hits'].map {|r| coerce_id r['_id'] }
-    end
-
-    def scores
-      @scores ||= Hash[results.map {|r| [coerce_id(r['_id']), r['_score']]}]
-    end
-
-    def aggregation(*args)
-      key = args.map(&:to_s).join('.')
-      @aggregations ||= {}
-      @aggregations[key] ||= begin
-        args.reduce(response['aggregations']) do |agg, name|
-          agg = agg[name.to_s] unless agg.nil?
-        end
-      end
-    end
-
-    def explanations
-      @root[:explain] = true unless @results
-      @explanations ||= Hash[results.map {|r|
-        [coerce_id(r['_id']), r['_explanation']]
-      }]
+      @results ||= Results.new request, response
     end
 
     def method_missing(method, *args, &block)
@@ -157,8 +145,9 @@ module Stretchy
 
     private
 
-      def coerce_id(id)
-        id =~ /\d+/ ? id.to_i : id
+      def require_context!
+        return true if context?(:query) || context?(:filter)
+        raise 'You must specify either query or filter context'
       end
 
       def add_params(params = {}, new_context, factory_method)

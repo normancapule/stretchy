@@ -1,41 +1,43 @@
 module Stretchy
   module Utils
+    module Methods
 
-    class << self
+      # detects empty string, empty array, empty hash, nil
       def is_empty?(arg = nil)
-        UTILS.is_empty?(arg)
+        return true if arg.nil?
+        if arg.respond_to?(:any?)
+          !arg.any? {|a| !is_empty?(a) }
+        elsif arg.respond_to?(:empty?)
+          arg.empty?
+        else
+          !arg
+        end
       end
 
+      # raises error if required parameters are missing
+      def require_params!(method, params, *fields)
+        raise Errors::InvalidParamsError.new(
+          "#{method} requires at least #{fields.join(' and ')} params",
+          "params found: #{params}"
+        ) if fields.any? {|f| is_empty? params[f] }
+
+        true
+      end
+
+      # generates a hash of specified options,
+      # removing them from the original hash
       def extract_options!(params, list)
-        UTILS.extract_options!(params, list)
+        boost_params = Hash[list.map do |opt|
+          [opt, params.delete(opt)]
+        end].keep_if {|k,v| !is_empty?(v)}
+      end
+
+      # coerces ids to integers, unless they contain non-integers
+      def coerce_id(id)
+        id =~ /\d+/ ? id.to_i : id
       end
     end
 
-    # detects empty string, empty array, empty hash, nil
-    def is_empty?(arg = nil)
-      return true if arg.nil?
-      if arg.respond_to?(:any?)
-        !arg.any? {|a| !is_empty?(a) }
-      elsif arg.respond_to?(:empty?)
-        arg.empty?
-      else
-        !arg
-      end
-    end
-
-    # generates a hash of specified options,
-    # removing them from the original hash
-    def extract_options!(params, list)
-      boost_params = Hash[list.map do |opt|
-        [opt, params.delete(opt)]
-      end].keep_if {|k,v| !is_empty?(v)}
-    end
-
-    class UtilsModule
-      include Utils
-    end
-
-    UTILS = UtilsModule.new
-
+    extend Methods
   end
 end

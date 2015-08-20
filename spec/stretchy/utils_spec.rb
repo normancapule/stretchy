@@ -5,7 +5,7 @@ module Stretchy
 
     context 'consumer class' do
       class UtilityConsumer
-        include Utils
+        include Utils::Methods
       end
 
       subject { UtilityConsumer.new }

@@ -14,7 +14,7 @@ describe 'Filters' do
 
     # filters do not affect document scores, so make sure this
     # is running filters
-    scores = api.results.map{|r| r['_score'] }
+    scores = api.scores.values
     expect(scores.all?{|s| s == scores.first}).to eq(true)
   end
 

@@ -26,10 +26,16 @@ MAPPING  = {
 RSpec.configure do |config|
 
   config.before(:suite) do
-    Stretchy.client.indices.delete(index: SPEC_INDEX)
-    Stretchy.client.indices.create(index: SPEC_INDEX, body: {mappings: MAPPING})
+    Stretchy.delete_index(SPEC_INDEX)
+    Stretchy.create_index(SPEC_INDEX, body: {mappings: MAPPING})
     FIXTURES.each do |name, data|
-      Stretchy.client.index(index: SPEC_INDEX, type: FIXTURE_TYPE, id: data['id'], body: data)
+      next if name =~ /stub/
+      Stretchy.index_document(
+        index:  SPEC_INDEX,
+        type:   FIXTURE_TYPE,
+        id:     data['id'],
+        body:   data
+      )
     end
     Stretchy.client.indices.refresh(index: SPEC_INDEX)
   end

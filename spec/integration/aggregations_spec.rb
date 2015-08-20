@@ -9,7 +9,7 @@ describe 'Aggregations' do
 
   it 'uses a raw json hash' do
     q = subject.aggs(my_agg: {filter: {term: {url_slug: found['url_slug']}}})
-    count = q.aggregation(:my_agg)['doc_count']
+    count = q.aggregations(:my_agg)['doc_count']
     expect(count).to eq(1)
   end
 

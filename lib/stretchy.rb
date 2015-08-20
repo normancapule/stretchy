@@ -6,8 +6,10 @@ require 'elasticsearch'
 
 require 'stretchy/api'
 require 'stretchy/and_collector'
+require 'stretchy/errors'
 require 'stretchy/factory'
 require 'stretchy/node'
+require 'stretchy/results'
 require 'stretchy/utils'
 require 'stretchy/version'
 
@@ -32,6 +34,28 @@ module Stretchy
     msg << "\n\n"
     msg << JSON.pretty_generate(options)
     raise msg
+  end
+
+  def index_exists?(name)
+    client.indices.exists? index: name
+  end
+
+  def delete_index(name)
+    client.indices.delete(index: name) if index_exists? name
+  end
+
+  def create_index(name, params = {})
+    client.indices.create({index: name}.merge(params)) unless index_exists? name
+  end
+
+  def index_document(params = {})
+    Utils.require_params!(:index_document, params, :index, :type, :body)
+
+    raise IndexDoesNotExistError.new(
+      "index #{params[:index]} does not exist"
+    ) unless index_exists? params[:index]
+
+    client.index(params)
   end
 
   def query(options = {})
