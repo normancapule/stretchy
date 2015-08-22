@@ -41,4 +41,8 @@ describe 'Filters' do
     check subject.filter.query(match: {_all: 'Gamecube'})
   end
 
+  specify 'range filter' do
+    check subject.filter.range(salary: {gte: found['salary']})
+  end
+
 end

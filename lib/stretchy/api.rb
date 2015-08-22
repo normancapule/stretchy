@@ -16,6 +16,10 @@ module Stretchy
       @context    = options[:context]  || {}
     end
 
+    def context?(*args)
+      (args - context.keys).empty?
+    end
+
     def limit(size)
       @root[:size] = size
       self
@@ -37,12 +41,13 @@ module Stretchy
       self
     end
 
-    def context?(*args)
-      (args - context.keys).empty?
-    end
-
     def explain
       @root[:explain] = true
+      self
+    end
+
+    def aggs(params = {})
+      @root[:aggs] = params
       self
     end
 
@@ -62,6 +67,18 @@ module Stretchy
       add_params params, :filter, :raw_node
     end
 
+    def should(params = {})
+      add_params params, :should, :context_nodes
+    end
+
+    def not(params = {})
+      add_params params, :must_not, :context_nodes
+    end
+
+    def range(params = {})
+      add_params params, context, :range_node
+    end
+
     def boost(params = {}, options = {})
       add_context :boost
       return self unless params.any?
@@ -70,7 +87,7 @@ module Stretchy
         boost_json = options.merge(filter: params.filter_node.json)
         add_nodes Node.new(boost_json, context)
       else
-        add_nodes Factory.raw_node(params, context)
+        add_nodes Factory.raw_boost_node(params, context)
       end
     end
 
@@ -86,16 +103,11 @@ module Stretchy
       add_params params, :boost, :decay_function_node
     end
 
-    def should(params = {})
-      add_params params, :should, :context_nodes
-    end
-
-    def not(params = {})
-      add_params params, :must_not, :context_nodes
-    end
-
     def request
-      @request ||= root.merge(body: {query: collector.as_json})
+      @request ||= begin
+        aggregates = root.delete(:aggs) || {}
+        root.merge(body: {query: collector.as_json, aggs: aggregates})
+      end
     end
 
     def response
@@ -118,7 +130,18 @@ module Stretchy
       @scores ||= Hash[results.map {|r| [coerce_id(r['_id']), r['_score']]}]
     end
 
+    def aggregation(*args)
+      key = args.map(&:to_s).join('.')
+      @aggregations ||= {}
+      @aggregations[key] ||= begin
+        args.reduce(response['aggregations']) do |agg, name|
+          agg = agg[name.to_s] unless agg.nil?
+        end
+      end
+    end
+
     def explanations
+      @root[:explain] = true unless @results
       @explanations ||= Hash[results.map {|r|
         [coerce_id(r['_id']), r['_explanation']]
       }]

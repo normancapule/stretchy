@@ -21,6 +21,10 @@ module Stretchy
     @client ||= Elasticsearch::Client.new
   end
 
+  def client=(client)
+    @client = client
+  end
+
   def search(options = {})
     client.search(options)
   rescue Elasticsearch::Transport::Transport::Errors::BadRequest => bre
@@ -32,6 +36,14 @@ module Stretchy
 
   def query(options = {})
     API.new(root: options)
+  end
+
+  def method_missing(method, *args, &block)
+    if client.respond_to?(method)
+      client.send(method, *args, &block)
+    else
+      super
+    end
   end
 
 end

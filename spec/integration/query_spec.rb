@@ -18,11 +18,11 @@ describe 'Queries' do
   end
 
   specify 'basic filter' do
-    check(subject.query(term: { url_slug: found['url_slug']}))
+    check subject.query(term: { url_slug: found['url_slug']})
   end
 
   specify 'not query' do
-    check(subject.not.query(term: { url_slug: not_found['url_slug']}))
+    check subject.not.query(term: { url_slug: not_found['url_slug']})
   end
 
   specify 'should query' do
@@ -38,6 +38,10 @@ describe 'Queries' do
 
     # but .should affects the document score: more matchs == higher score
     expect(sakurai['_score']).to be > suda['_score']
+  end
+
+  specify 'range query' do
+    check subject.query.range(salary: {gte: found['salary']})
   end
 
   specify 'explain' do

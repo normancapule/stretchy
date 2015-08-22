@@ -7,6 +7,13 @@ module Stretchy
       :function,
       :weight
     ]
+    FUNCTION_SCORE_OPTIONS = [
+      :boost,
+      :max_boost,
+      :score_mode,
+      :boost_mode,
+      :min_score
+    ]
 
     module_function
 
@@ -14,7 +21,22 @@ module Stretchy
       {}
     end
 
+    def extract_boost_params!(params)
+      boost_params = Utils.extract_options!(params, BOOST_OPTIONS)
+      boost_params = {weight: DEFAULT_WEIGHT} unless boost_params.any?
+      boost_params
+    end
+
+    def extract_function_score_options!(params)
+      Utils.extract_options!(params, FUNCTION_SCORE_OPTIONS)
+    end
+
     def raw_node(params, context)
+      Node.new(params, context)
+    end
+
+    def raw_boost_node(params, context)
+      context[:fn_score]  = extract_function_score_options!(params)
       Node.new(params, context)
     end
 
@@ -29,14 +51,11 @@ module Stretchy
     end
 
     def params_to_boost(params, context = default_context)
-      boost_params = Hash[BOOST_OPTIONS.map do |opt|
-        [opt, params.delete(opt)]
-      end].keep_if {|k,v| !Utils.is_empty?(v) }
-
-      boost_params  = {weight: DEFAULT_WEIGHT} unless boost_params.any?
-      subcontext    = context.merge(boost: nil)
-      nodes         = context_nodes(params, subcontext)
-      collector     = AndCollector.new(nodes, subcontext)
+      boost_params        = extract_boost_params!(params)
+      context[:fn_score]  = extract_function_score_options!(params)
+      subcontext          = context.merge(boost: nil)
+      nodes               = context_nodes(params, subcontext)
+      collector           = AndCollector.new(nodes, subcontext)
 
       if context[:query]
         Node.new(boost_params.merge(filter: {query: collector.json}), context)
@@ -76,8 +95,16 @@ module Stretchy
       end
     end
 
+    # query and filter use the same syntax
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-filter.html
+    def range_node(params = {}, context = default_context)
+      Node.new({range: params}, context)
+    end
+
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functionfieldvaluefactor
     def field_value_function_node(params = {}, context = default_context)
+      context[:fn_score] = extract_function_score_options!(params)
       Node.new({field_value_factor: params}, context)
     end
 
@@ -88,9 +115,11 @@ module Stretchy
 
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functiondecay
     def decay_function_node(params = {}, context = default_context)
-      decay_fn = params.delete(:decay_function)
-      field    = params.delete(:field)
-      Node.new({decay_fn => { field => params}}, context)
+      boost_params        = extract_boost_params!(params)
+      context[:fn_score]  = extract_function_score_options!(params)
+      decay_fn            = params.delete(:decay_function)
+      field               = params.delete(:field)
+      Node.new({decay_fn => { field => params}}.merge(boost_params), context)
     end
 
   end

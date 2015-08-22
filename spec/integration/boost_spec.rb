@@ -33,7 +33,8 @@ describe 'Boosts' do
       decay_function: :gauss,
       field: :coords,
       origin: found['coords'],
-      scale: '2mi'
+      scale: '2mi',
+      weight: 3
     )
   end
 
@@ -43,6 +44,21 @@ describe 'Boosts' do
 
   specify 'not matching' do
     check subject.boost.match.not(name: not_found['name'])
+  end
+
+  describe 'function_score options' do
+    specify 'from boost' do
+      q = subject.boost(score_mode: :min)
+        .boost.match(_all: 'game', weight: 2)
+        .boost.match(_all: 'video', weight: 1000)
+      expect(q.scores.all?{|k,s| s < 1000}).to eq(true)
+    end
+
+    specify 'within boost' do
+      q = subject.boost.match(_all: 'game', weight: 2, score_mode: :min)
+        .boost.match(_all: 'video', weight: 1000)
+      expect(q.scores.all?{|k,s| s < 1000}).to eq(true)
+    end
   end
 
 end

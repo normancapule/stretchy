@@ -1,8 +1,14 @@
 module Stretchy
   module Utils
 
-    def self.is_empty?(arg = nil)
-      UTILS.is_empty?(arg)
+    class << self
+      def is_empty?(arg = nil)
+        UTILS.is_empty?(arg)
+      end
+
+      def extract_options!(params, list)
+        UTILS.extract_options!(params, list)
+      end
     end
 
     # detects empty string, empty array, empty hash, nil
@@ -15,6 +21,14 @@ module Stretchy
       else
         !arg
       end
+    end
+
+    # generates a hash of specified options,
+    # removing them from the original hash
+    def extract_options!(params, list)
+      boost_params = Hash[list.map do |opt|
+        [opt, params.delete(opt)]
+      end].keep_if {|k,v| !is_empty?(v)}
     end
 
     class UtilsModule

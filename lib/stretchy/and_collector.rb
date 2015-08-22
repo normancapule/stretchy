@@ -141,15 +141,28 @@ module Stretchy
         split_nodes
       end
 
+      def compile_boost_functions
+        boost_nodes.map do |n|
+          next unless n.json.any?
+          n.json
+        end.compact
+      end
+
+      def compile_function_score_options
+        boost_nodes.reduce({}) do |options, node|
+          options.merge(node.context[:fn_score] || {})
+        end
+      end
+
       def compile_query_filter_node
         compiled = compile_nodes(query_filter_nodes)
         Node.new(query: compiled.json) if compiled
       end
 
       def function_score_node
-        function_score_json = {
-          functions: boost_nodes.map(&:json)
-        }
+        function_score_json = compile_function_score_options
+        function_score_json[:functions] = compile_boost_functions
+
         if query_nodes.any?
           function_score_json[:query]   = filtered_query_node.json
         elsif filter_nodes.any?
