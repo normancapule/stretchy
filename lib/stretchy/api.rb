@@ -6,10 +6,11 @@ module Stretchy
     DEFAULT_PER_PAGE  = 10
 
     extend  Forwardable
+    include Enumerable
     include Utils::Methods
 
     delegate [:total, :ids, :scores, :explanations, :results,
-              :aggregations] => :results
+              :aggregations, :first, :last, :each] => :results
 
     attr_reader :collector, :root, :context
 
@@ -25,15 +26,13 @@ module Stretchy
 
     def limit(size = nil)
       return @root[:size] || DEFAULT_PER_PAGE unless size
-      @root[:size] = size.to_i
-      self
+      add_root size: size.to_i
     end
     alias :limit_value :limit
 
     def offset(from = nil)
       return @root[:from] || 0 unless from
-      @root[:from] = from.to_i
-      self
+      add_root from: from.to_i
     end
 
     # page 1 = from: 0, size: per_page
@@ -43,9 +42,7 @@ module Stretchy
       per_page = params[:limit] || params[:per_page] || limit
       per_page = per_page.to_i > 0 ? per_page : 1
       start    = [num.to_i - 1, 0].max
-      @root[:size] = per_page
-      @root[:from] = start * per_page
-      self
+      add_root from: start * per_page, size: per_page
     end
 
     def current_page
@@ -54,22 +51,19 @@ module Stretchy
     end
 
     def explain
-      @root[:explain] = true
-      self
+      add_root explain: true
+    end
+
+    def fields(*list)
+      add_root fields: list
     end
 
     def aggs(params = {})
-      @root[:aggs] = params
-      self
+      add_root aggs: params
     end
 
     def where(params = {})
       add_params params, :filter, :context_nodes
-    end
-
-    def range(params = {})
-      require_context!
-      add_nodes Factory.range_node(params, context)
     end
 
     def match(params = {})
@@ -93,18 +87,19 @@ module Stretchy
     end
 
     def range(params = {})
-      add_params params, context, :range_node
+      require_context!
+      add_params params, nil, :range_node
     end
 
     def boost(params = {}, options = {})
-      add_context :boost
-      return self unless params.any?
+      return add_context(:boost) unless params.any?
 
+      subcontext = context.merge(boost: true)
       if params.is_a? self.class
         boost_json = options.merge(filter: params.filter_node.json)
-        add_nodes Node.new(boost_json, context)
+        add_nodes Node.new(boost_json, subcontext)
       else
-        add_nodes Factory.raw_boost_node(params, context)
+        add_nodes Factory.raw_boost_node(params, subcontext)
       end
     end
 
@@ -122,8 +117,12 @@ module Stretchy
 
     def request
       @request ||= begin
-        aggregates = root.delete(:aggs) || {}
-        root.merge(body: {query: collector.as_json, aggs: aggregates})
+        base        = root.dup
+        sub         = {query: collector.as_json}
+        agg         = base.delete(:aggs) || {}
+        sub[:aggs]  = agg if agg.any?
+
+        base.merge(body: sub)
       end
     end
 
@@ -150,14 +149,21 @@ module Stretchy
         raise 'You must specify either query or filter context'
       end
 
+      def args_to_context(*args)
+        args.reduce({}) do |ctx, item|
+          next ctx if item.nil?
+          item.is_a?(Hash) ? ctx.merge(item) : ctx.merge({item => true})
+        end
+      end
+
       def add_params(params = {}, new_context, factory_method)
-        add_context new_context
-        return self if is_empty?(params)
+        return add_context(new_context) if is_empty?(params)
+        subcontext = context.merge(args_to_context(new_context))
 
         if params.is_a? self.class
-          add_nodes params.with_context(context)
+          add_nodes params.with_context(subcontext)
         else
-          add_nodes Factory.send(factory_method, params, context)
+          add_nodes Factory.send(factory_method, params, subcontext)
         end
       end
 
@@ -165,12 +171,20 @@ module Stretchy
         self.class.new nodes: collector.nodes + Array(additional), root: root
       end
 
+      def add_root(options = {})
+        self.class.new(
+          nodes:    collector.nodes,
+          root:     root.merge(options),
+          context:  context
+        )
+      end
+
       def add_context(*args)
-        to_merge = args.reduce({}) do |ctx, item|
-          item.is_a?(Hash) ? ctx.merge(item) : ctx.merge({item => true})
-        end
-        @context = context.merge(to_merge)
-        self
+        self.class.new(
+          nodes:   collector.nodes,
+          root:    root,
+          context: context.merge(args_to_context(*args))
+        )
       end
 
   end

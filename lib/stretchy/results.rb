@@ -35,9 +35,19 @@ module Stretchy
 
     def results
       @results ||= response['hits']['hits'].map do |r|
-        fields = r.reject {|k, _| k == '_source'}
+        fields        = r.reject {|k, _| k == '_source' || k == 'fields'}
         fields['_id'] = coerce_id(fields['_id']) if fields['_id']
-        r['_source'].merge(fields)
+        source        = r['_source'] || {}
+
+        # Elasticsearch always returns array values when specific
+        # fields are selected. Undesirable for single values, so
+        # coerce to single values when appropriate
+        selected      = r['fields']  || {}
+        selected      = Hash[selected.map do |k,v|
+          v.is_a?(Array) && v.count == 1 ? [k,v.first] : [k,v]
+        end]
+
+        source.merge(selected).merge(fields)
       end
     end
     alias :hits :results
