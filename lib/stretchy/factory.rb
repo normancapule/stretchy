@@ -102,6 +102,11 @@ module Stretchy
       Node.new({range: params}, context)
     end
 
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-geo-distance-filter.html
+    def geo_distance_node(params = {}, context = default_context)
+      Node.new({geo_distance: params}, context)
+    end
+
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functionfieldvaluefactor
     def field_value_function_node(params = {}, context = default_context)
       context[:fn_score] = extract_function_score_options!(params)

@@ -45,4 +45,11 @@ describe 'Filters' do
     check subject.filter.range(salary: {gte: found['salary']})
   end
 
+  specify 'geo distance filter' do
+    check subject.geo_distance(
+      distance: '1mi',
+      coords: [found['coords']['lon'], found['coords']['lat']]
+    )
+  end
+
 end

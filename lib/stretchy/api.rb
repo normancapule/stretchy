@@ -91,6 +91,10 @@ module Stretchy
       add_params params, nil, :range_node
     end
 
+    def geo_distance(params = {})
+      add_params params, :filter, :geo_distance_node
+    end
+
     def boost(params = {}, options = {})
       return add_context(:boost) unless params.any?
 
