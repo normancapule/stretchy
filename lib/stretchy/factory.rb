@@ -1,8 +1,9 @@
 module Stretchy
   module Factory
 
-    DEFAULT_WEIGHT = 1.5
-    BOOST_OPTIONS = [
+    DEFAULT_WEIGHT  = 1.5
+    DEFAULT_SLOP    = 50
+    BOOST_OPTIONS   = [
       :filter,
       :function,
       :weight
@@ -95,6 +96,32 @@ module Stretchy
       end
     end
 
+    # https://www.elastic.co/guide/en/elasticsearch/guide/current/proximity-relevance.html
+    def fulltext_nodes_from_string(params, context = default_context)
+      subcontext = context.merge(query: true)
+      nodes = [raw_node({
+        match: {
+          _all: {
+            query: params,
+            minimum_should_match: 1
+          }
+        }
+      }, subcontext)]
+
+      subcontext = subcontext.merge(should: true)
+      nodes << Factory.raw_node({
+        match_phrase: {
+          _all: {
+            query: params,
+            slop:  DEFAULT_SLOP
+          }
+        }
+      }, subcontext)
+
+      nodes
+    end
+
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html
     def more_like_node(params = {}, context = default_context)
       Node.new({more_like_this: params}, context)
     end

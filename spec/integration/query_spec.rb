@@ -52,4 +52,8 @@ describe 'Queries' do
     )
   end
 
+  specify 'fulltext query' do
+    check subject.fulltext(found['name'])
+  end
+
 end
