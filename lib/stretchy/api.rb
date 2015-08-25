@@ -70,6 +70,11 @@ module Stretchy
       add_params params, :query, :context_nodes
     end
 
+    def more_like(params = {})
+      params[:ids] = Array(params[:ids]) if params[:ids]
+      add_params params, :query, :more_like_node
+    end
+
     def query(params = {})
       add_params params, :query, :raw_node
     end

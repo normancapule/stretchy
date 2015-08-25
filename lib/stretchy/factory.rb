@@ -95,6 +95,10 @@ module Stretchy
       end
     end
 
+    def more_like_node(params = {}, context = default_context)
+      Node.new({more_like_this: params}, context)
+    end
+
     # query and filter use the same syntax
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-query.html
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-range-filter.html

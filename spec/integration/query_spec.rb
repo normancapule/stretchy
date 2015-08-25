@@ -44,9 +44,12 @@ describe 'Queries' do
     check subject.query.range(salary: {gte: found['salary']})
   end
 
-  specify 'explain' do
-    results = subject.explain.match(_all: found['name']).results
-    expect(results.first['_explanation']).to_not be_empty
+  specify 'more_like' do
+    check subject.more_like(
+      like_text:        found['name'],
+      min_doc_freq:     1,
+      min_term_freq:    1
+    )
   end
 
 end

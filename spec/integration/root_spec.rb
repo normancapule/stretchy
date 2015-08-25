@@ -23,4 +23,9 @@ describe 'Root actions' do
     expect(subject.offset(1).count).to eq(subject.count - 1)
   end
 
+  specify 'explain' do
+    results = subject.explain.match(_all: found['name']).results
+    expect(results.first['_explanation']).to_not be_empty
+  end
+
 end
