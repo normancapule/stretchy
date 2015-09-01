@@ -40,29 +40,19 @@ It does support fairly basic queries in an ActiveRecord-ish style.
 
 ### Documentation
 
-See [the Stretchy docs on rubydocs](http://www.rubydoc.info/gems/stretchy) for fairly detailed documentation on the API. Specifically, you'll probably want the docs for [Stretchy Clauses](http://www.rubydoc.info/gems/stretchy/Stretchy/Clauses/Base), which make up the basis of the query builder.
+See [the Stretchy docs on rubydocs](http://www.rubydoc.info/gems/stretchy) for fairly detailed documentation on the API. Specifically, you'll probably want the docs for [the API class](http://www.rubydoc.info/gems/stretchy/Stretchy/API), which exposes the public methods for building queries.
 
 ### Configuration
 
 ```ruby
-Stretchy.configure do |c|
-  c.index_name = 'my_index'                       # REQUIRED
-  c.client     = $my_client                       # ignore below, use a custom client
-  c.url        = 'https://user:pw@my.elastic.url' # default is ENV['ELASTICSEARCH_URL']
-  c.adapter    = :patron                          # default is :excon
-
-  c.logger     = Logger.new(STDOUT)               # passed to elasticsearch-api gem
-                                                  # Stretchy will also log, with the params
-                                                  # specified below
-  c.log_level  = :debug                           # default is :silence
-  c.log_color  = :green                           # default is :blue
-end
+Stretchy.client = Elasticsearch::Client.new
 ```
 
 ### Base
 
 ```ruby
-query = Stretchy.query(type: 'model_name')
+# returns a Stretchy::API object
+api = Stretchy.query(index: 'myapp_development', type: 'model_name')
 ```
 
 From here, you can chain the methods to build your desired query.
@@ -71,17 +61,17 @@ From here, you can chain the methods to build your desired query.
 
 From here, you can chain the following query methods:
 
+* [query](#query) - Add arbitrary json fragment to the query section
+* [filter](#filter) - Add arbitrary json fragment to the filter section
+* [not](#not) - Get documents not matching passed conditions
+* [should](#should) - Increase document score for matching documents
 * [fulltext](#fulltext) - generic fulltext search with proximity relevance
 * [match](#match) - Elasticsearch match query
-* [query](#query) - Add arbitrary json fragment to the query section
 * [more_like](#more-like) - Get documents similar to a string or other documents
 * [where](#where) - Filter based on fields in the document
 * [terms](#terms) - Filter without analyzing strings or symbols
-* [filter](#filter) - Add arbitrary json fragment to the filter section
 * [range](#range) - Filter for a range of values
-* [geo](#geo-distance) - Filter on geo_point fields within a specified distance
-* [not](#not) - Get documents not matching passed conditions
-* [should](#should) - Increase document score for matching documents
+* [geo_distance](#geo-distance) - Filter on geo_point fields within a specified distance
 * [boost](#boost) - Increasing document score based on different factors
 * [near](#near) - Boost score based on how close a number / date / geo point is to an origin
 * [field](#field) - Boost based on the numeric value of the passed field
@@ -90,36 +80,71 @@ From here, you can chain the following query methods:
 * [fields](#fields) - Only return the specified fields
 * [page](#limit) - Limit, Offset, and Page to define which results to return
 
-### <a id="fulltext"></a>Fulltext
+### A note on chaining:
+
+The most utility generated from Stretchy is building composable elements for a `function_score` query, and the boolean logic for queries, filters, and boost functions within. Whenever you use one of the API methods having to do with **context**, you change the state in which the filters or queries afterwards will be applied.
 
 ```ruby
-query = query.fulltext('Generic user-input phrase')
-             .fulltext(author: 'John Romero')
+# filters out documents matching the terms filer
+api = api.filter.not(term: {my_field: 'my_val'})
+
+# constructs a bool: query with the regexp query in the should: clause
+api = api.should.query(regexp: {my_field: 'aw*ome'})
+
+# constructs a function_score query, with a boost function (weight 5)
+# that boosts the score of documents matching the regexp query
+# (a filter of type query:)
+api = api.boost.query(regexp: {my_field: 'inter*on'}, weight: 5)
 ```
 
-Performs a query for the given string, either anywhere in the document or in specific fields. At least one of the terms must match, and the closer a document is to having the exact phrase, the higher its' score. See the Elasticsearch guide's [article on proximity scoring](https://www.elastic.co/guide/en/elasticsearch/guide/current/proximity-relevance.html) for more info on how this works.
-
-### <a id="match"></a>Match
+As soon as you pass parameters to one of the methods, however, the context resets. This allows setting the context by multiple method chains, then adding a query, filter, or boost function with the context applied.
 
 ```ruby
-query = query.match('welcome to my web site')
-             .match(title: 'welcome to my web site')
-             .match(image: 'loading construction flash', operator: 'or')
+api = api.filter(term: {my_field: 'my_val'}).query(match: {_all: 'hello'})
+{
+  filtered: {
+    query: {match: {_all: 'hello'}},
+    filter: {term: {my_field: 'my_val'}}
+  }
+}
+
+api = api.should.query(match: {_all: 'hello'}).query(match: {_all: 'goodbye'})
+{
+  bool: {
+    must:   {match: {_all: 'goodbye'}},
+    should: {match: {_all: 'hello'}}
+  }
+}
+
+api = api.should.not.query(match: {_all: 'hello'})
+         .should.query(match: {_all: 'goodbye'})
+{
+  bool: {
+    must: {},
+    must_not: {},
+    should: {
+      bool: {
+        must:     {match: {_all: 'goodbye'}},
+        must_not: {match: {_all: 'hello'}}
+      }
+    }
+  }
+}
 ```
 
-Performs a match query for the given string. If given a hash, it will use a match query on the specified fields, otherwise it will default to `'_all'`. By default, a match query searches for any of the analyzed terms in the document, and scores them using Lucene's [practical scoring formula](https://www.elastic.co/guide/en/elasticsearch/guide/current/practical-scoring-function.html), which combines TF/IDF, the vector space model, and a few other niceties.
+Furthermore, API objects are immutable. Each chain method produces a new API object, so you never have to worry about mutation or cache busting. This, each example has `api = api.method.calls`, since you will need to store the new query object to get the results you are expecting.
 
 ### <a id="query"></a>Query
 
 ```ruby
-query = query.match.query(
+api = api.match.query(
           multi_match: {
             query: 'super smash bros',
             fields: ['developer.games', 'developer.bio']
           }
         )
 
-query = query.match.not.match.query(
+api = api.match.not.match.query(
           multi_match: {
             query: 'rez',
             fields: ['developer.games', 'developer.bio']
@@ -127,59 +152,12 @@ query = query.match.not.match.query(
         )
 ```
 
-Adds arbitrary JSON to the query section of the final query. If you want to use a query type not currently supported by Stretchy, you can call this method and pass in the requisite json fragment. You can also prefix this with `.not` and `.should` to add your json to those sections of the query instead.
-
-#### Caution
-
-Stretchy tries to merge together matches on the same fields to optimize the final query to be sent to Elastic, but will not try to optimize any json added via the `.query` method.
-
-### <a id="more-like"></a>More Like
-
-```ruby
-query = query.more_like(ids: [1, 2, 3])
-             .more_like(docs: other_search.results)
-             .more_like(like_text: 'puppies and kittens are great', fields: :about_me)
-```
-
-Finds documents similar to a list of input documents. You must pass in one of the `:ids`, `:docs` or `:like_text` parameters, but everything else is optional. This method accepts any of the params available in the [Elasticsearch more_like_this query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html). It can also be chained with `.not` and `.should`.
-
-### <a id="where"></a>Where
-
-```ruby
-query = query.where(
-  name: 'alice',
-  email: [
-    'alice@company.com',
-    'beatrice.christine@other_company.com'
-  ],
-  commit_count: 27..33,
-  is_robot: nil
-)
-```
-
-Allows passing a hash of matchable options similar to ActiveRecord's `where` method. To be returned, the document must match each of the parameters. If you pass an array of parameters for a field, the document must match at least one of those parameters.
-
-#### Gotcha
-
-If you pass a string or symbol for a field, it will be converted to a [Match Query](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html) for the specified field. Since Elastic analyzes terms by default, string or symbol terms will be looked for by an analyzed query.
-
-To query for _exact_ matches against strings or symbols with underscores and punctuation intact, use the `.where.terms` clause.
-
-### <a id="terms"></a>Terms
-
-```ruby
-query = query.where.terms(
-          email: 'happy.developer@company.com',
-          status: :awesome
-        )
-```
-
-Sometimes you store values with punctuation, underscores, or other characters Elasticsearch would normally split into separate terms. If you want to query all comments that match a specific email address, you need to make sure that Elasticsearch doesn't analyze the query terms you send it before running the query. This clause allows you to do that.
+Adds arbitrary JSON as a query. If you want to use a query type not currently supported by Stretchy, you can call this method and pass in the requisite json fragment. You can also prefix this with the context methods to put this query in the right place when you send it to Elastic.
 
 ### <a id="filter"></a>Filter
 
 ```ruby
-query = query.filter(
+api = api.filter(
           geo_polygon: {
               'person.location' => {
                   points: [
@@ -192,52 +170,114 @@ query = query.filter(
         )
 ```
 
-Adds arbitrary JSON to the filter section of the final query. If you want to use a filter type not currently supported by Stretchy, you can call this method and pass in the requisite json fragment. You can also prefix this with `.not` and `.should` to add your json to those sections of the filters instead.
-
-#### Caution
-
-Stretchy tries to merge together filters on the same fields to optimize the final query to be sent to Elastic, but will not try to optimize any json added via the `.filter` method.
-
-### <a id="range"></a>Range
-
-```ruby
-query = query.range(:rating, min: 3, max: 5)
-             .range(:released, min: Time.now - 60*60*24*100)
-             .range(:quantity, max: 100, exclusive: true)
-             .range(:awesomeness, min: 89, max: 100, exclusive_min: true)
-```
-
-Only documents with the specified field, and within the specified range match. You can also pass in dates and times as ranges. While you could pass a normal ruby `Range` object to `.where`, this allows you to specify only a minimum or only a maximum. Range filters are inclusive by default, but you can also pass `:exclusive`, `:exclusive_min`, or `:exclusive_max`, which are flags declaring either or both of the `min` & `max` parameters to be exclusive.
-
-### <a id="geo-distance"></a>Geo Distance
-
-```ruby
-query = query.geo('coords', distance: '20mi', lat: 35.0117, lng: 135.7683)
-```
-
-Filters for documents where the specified `geo_point` field is within the given range.
-
-#### Gotcha
-
-The field must be mapped as a `geo_point` field. See [Elasticsearch types](http://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html) for more info.
+Adds arbitrary JSON as a filter. If you want to use a filter type not currently supported by Stretchy, you can call this method and pass in the requisite json fragment. You can also prefix this with context methods.
 
 ### <a id="not"></a>Not
 
 ```ruby
-query = query.where.not(rating: 0)
-             .match.not('angry')
-             .where.not.geo(field: 'coords', distance: '20mi', lat: 35.0117, lng: 135.7683)
+api = api.where.not(rating: 0)
+         .not.match('angry')
 ```
 
-Called after `where` or `match` will let you apply inverted filters. Any documents that match those filters will be excluded.
+If called after a `.where` or `.match`, `.not` will act like that method, but will invert the specified queries or filters. If called before some other method such as `.query()`, it will invert the resulting object.
 
 ### <a id="should"></a>Should
 
 ```ruby
-query = query.should(name: 'Sarah', awesomeness: 1000).should.not(awesomeness: 0)
+api = api.match.should(name: 'Ada')
+         .should.not.query(regexp: {title: 'boring'})
 ```
 
-Should filters work similarly to `.where`. Documents that do not match are still returned, but they have a lower relevancy score and will appear after documents that do match in the results. See Elastic's documentation for [BoolQuery](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html) and [BoolFilter](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-filter.html) for more info.
+If called after a `.where` or `.match`, `.should` will act like that method, but will combine other queries or filters into a `bool:` type, and place the resulting query or filter objects in the `should:` clause. If called before any query or filter method, it will take the results of that method and apply them in a `should:` clause.
+
+Each `should:` clause inside a query boosts the relevance score.
+
+The `should:` clause without a `must:` clause requires at least one of the `should:` statements to match on a document. In a `bool:` filter, this is really all they do.
+
+See Elastic's documentation for [BoolQuery](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-query.html) and [BoolFilter](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-bool-filter.html) for more info.
+
+### <a id="match"></a>Match
+
+```ruby
+api = api.match('welcome to my web site')
+         .match(title: 'welcome to my web site')
+```
+
+Performs a match query for the given string. If given a hash, it will use a match query on the specified fields, otherwise it will default to `'_all'`. By default, a match query searches for any of the analyzed terms in the document, and scores them using Lucene's [practical scoring formula](https://www.elastic.co/guide/en/elasticsearch/guide/current/practical-scoring-function.html), which combines TF/IDF, the vector space model, and a few other niceties.
+
+### <a id="fulltext"></a>Fulltext
+
+```ruby
+api = api.fulltext('Generic user-input phrase')
+```
+
+Performs a query for the given string anywhere in the document. At least one of the terms must match, and the closer a document is to having the exact phrase, the higher its' score. See the Elasticsearch guide's [article on proximity scoring](https://www.elastic.co/guide/en/elasticsearch/guide/current/proximity-relevance.html) for more info on how this works.
+
+### <a id="more-like"></a>More Like
+
+```ruby
+api = api.more_like(ids: [1, 2, 3])
+         .more_like(docs: other_search.results)
+         .more_like(
+           like_text: 'puppies and kittens are great',
+           fields: ['about_me']
+         )
+```
+
+Finds documents similar to a list of input documents. You must pass in one of the `:ids`, `:docs` or `:like_text` parameters, but everything else is optional. This method accepts any of the params available in the [Elasticsearch more_like_this query](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-mlt-query.html).
+
+### <a id="where"></a>Where
+
+```ruby
+api = api.where(
+  name: 'alice',
+  email: [
+    'alice@company.com',
+    'beatrice.christine@other_company.com'
+  ],
+  commit_count: 27..33,
+  is_robot: nil
+)
+```
+
+Allows passing a hash of matchable options similar to ActiveRecord's `where` method. To be matched, the document must match each of the parameters. If you pass an array of parameters for a field, the document must match at least one of those parameters.
+
+#### Gotcha
+
+If you pass a string or symbol for a field, it will be converted to a [Term Filter](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-filter.html) for the specified field. Since Elastic analyzes terms by default, what is stored in the elasticsearch index may not _exactly_ match the specified terms.
+
+To use a `match:` query as a filter instead of a `terms:` filter, use the context methods:
+
+```ruby
+api = api.filter.match(name: 'Alice', email: 'alice@company.com')
+```
+
+### <a id="range"></a>Range
+
+```ruby
+api = api.range(rating:       {gte: 3, lte: 5})
+         .range(released:     {gte: Time.now - 60*60*24*100})
+         .range(quantity      {lt: 100})
+         .range(awesomeness:  {gt: 89, lte: 100})
+```
+
+Only documents with the specified field, and within the specified range match. You can also pass in dates and times as ranges. While you could pass a normal ruby `Range` object to `.where`, this allows you to specify only a minimum or only a maximum.
+
+### <a id="geo-distance"></a>Geo Distance
+
+```ruby
+api = api.geo_distance(
+  field:    'coords',
+  distance: '20mi',
+  origin:   [135.7683, 35.0117]
+)
+```
+
+Filters for documents where the specified `geo_point` field is within the given range of the `origin` point.
+
+#### Gotcha
+
+The field must be mapped as a `geo_point` field. See [Elasticsearch types](http://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html) for more info.
 
 ### <a id="boost"></a>Boost
 
