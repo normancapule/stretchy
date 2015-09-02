@@ -19,13 +19,37 @@ describe 'Boosts' do
     check subject.boost.match(_all: found['name'])
   end
 
-  specify 'field value' do
-    check subject.boost.field_value(field: :salary)
+  describe 'field value' do
+    specify 'with only field' do
+      check subject.boost.field_value(field: :salary)
+    end
+
+    specify 'with field value options' do
+      check subject.boost.field_value(
+        field:    :salary,
+        factor:   1.2,
+        modifier: :square
+      )
+    end
+
+    specify 'with weight' do
+      check subject.boost.field_value(
+        field:  :salary,
+        factor: 1.2,
+        weight: 100
+      )
+    end
   end
 
-  # fortunately, 'random' has a seed
-  specify 'random value' do
-    check subject.boost.random(found['id'])
+  describe 'random value' do
+    # fortunately, 'random' has a seed
+    specify 'by seed' do
+      check subject.boost.random(found['id'])
+    end
+
+    specify 'with weight' do
+      check subject.boost.random(seed: found['id'], weight: 100)
+    end
   end
 
   specify 'distance from value' do

@@ -141,12 +141,15 @@ module Stretchy
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functionfieldvaluefactor
     def field_value_function_node(params = {}, context = default_context)
       context[:fn_score] = extract_function_score_options!(params)
-      Node.new({field_value_factor: params}, context)
+      boost_params       = extract_boost_params!(params)
+      Node.new(boost_params.merge(field_value_factor: params), context)
     end
 
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functionrandom
-    def random_score_function_node(seed, context = default_context)
-      Node.new({random_score: { seed: seed}}, context)
+    def random_score_function_node(params, context = default_context)
+      json          = {random_score: {seed: params[:seed]}}
+      json[:weight] = params[:weight] if params[:weight]
+      Node.new(json, context)
     end
 
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/querydslfunctionscorequery.html#functiondecay

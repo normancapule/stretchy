@@ -17,6 +17,10 @@ describe 'Queries' do
     check subject.query(match: { name: "sakurai"})
   end
 
+  specify 'string query' do
+    check subject.match('sakurai')
+  end
+
   specify 'basic filter' do
     check subject.query(term: { url_slug: found['url_slug']})
   end

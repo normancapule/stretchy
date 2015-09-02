@@ -203,7 +203,7 @@ api = api.match('welcome to my web site')
          .match(title: 'welcome to my web site')
 ```
 
-Performs a match query for the given string. If given a hash, it will use a match query on the specified fields, otherwise it will default to `'_all'`. By default, a match query searches for any of the analyzed terms in the document, and scores them using Lucene's [practical scoring formula](https://www.elastic.co/guide/en/elasticsearch/guide/current/practical-scoring-function.html), which combines TF/IDF, the vector space model, and a few other niceties.
+Performs a match query for the given string. If given a hash, it will use a match query on the specified fields, otherwise it will default to `'_all'`. By default, a match query searches for any of the analyzed terms, and scores them using Lucene's [practical scoring formula](https://www.elastic.co/guide/en/elasticsearch/guide/current/practical-scoring-function.html), which combines TF/IDF, the vector space model, and a few other niceties.
 
 ### <a id="fulltext"></a>Fulltext
 
@@ -275,16 +275,27 @@ api = api.geo_distance(
 
 Filters for documents where the specified `geo_point` field is within the given range of the `origin` point.
 
-#### Gotcha
+#### Gotchas
 
 The field must be mapped as a `geo_point` field. See [Elasticsearch types](http://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-geo-point-type.html) for more info.
+
+The `origin:` point should be specified in one of the following formats:
+
+```ruby
+'35,135'            # string: lat,lon - no space
+'drm3btev3e86'      # geohash as a string
+[135, 35]           # array: [lon, lat] - two elements, longitude first
+{lat: 35, lon: 135} # hash with lat: and lon: keys
+```
+
+Note that the lat/lon order is reversed for the array format to comply with [GeoJSON](http://geojson.org/). The hash uses the `lon` key, **not** `lng` . For more information about geohashes, [see Elastic's documentation](https://www.elastic.co/guide/en/elasticsearch/guide/current/geohashes.html).
 
 ### <a id="boost"></a>Boost
 
 ```ruby
-query = query.boost.where(category: 3, weight: 100)
-             .boost.range(:awesomeness, min: 10, weight: 10)
-             .boost.match.not('sucks')
+api = api.boost.where(category: 3, weight: 100)
+         .boost.range(:awesomeness, min: 10, weight: 10)
+         .boost.match.not('sucks')
 ```
 
 Boosts use a [Function Score Query](http://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-function-score-query.html) with filters to allow you to affect the score for the document. Each condition will be applied as a filter with an optional weight.
@@ -293,8 +304,21 @@ Boosts use a [Function Score Query](http://www.elastic.co/guide/en/elasticsearch
 ### <a id="near"></a>Near
 
 ```ruby
-query = query.boost.near(field: :published_at, origin: Time.now, scale: '5d')
-             .boost.near(field: :coords, lat: 35.0117, lng: 135.7683, scale: '10mi', decay: 0.33, weight: 1000)
+api = api.boost.near(
+  field:  :published_at,
+  origin: Time.now,
+  scale: '5d',
+  decay_function: :linear
+)
+
+api = api.boost.near(
+  field:  :coords,
+  origin: [135.7683, 35.0117],
+  scale:  '10mi',
+  decay:  0.33,
+  weight: 1000,
+  decay_function: :gauss
+)
 ```
 
 Boosts a document by how close a given field is to a given `:origin` . Accepts dates, times, numbers, and geographical points. Unlike `.where.range` or `.boost.geo`, `.boost.near` is not a binary operation. All documents get a score for that field, which decays the further it is away from the origin point.
@@ -306,9 +330,9 @@ See the [Function Score Query](http://www.elastic.co/guide/en/elasticsearch/refe
 ### <a id="field"></a>Field
 
 ```ruby
-query = query.boost.field(:popularity)
-             .boost.field(:timestamp, factor: 0.5, modifier: :sqrt)
-             .boost.field(:votes, :bookmarks, :comments)
+api = api.boost.field_value(field: :popularity)
+         .boost.field_value(field: :timestamp, factor: 0.5, modifier: :sqrt)
+         .boost.field_value(field: :votes, weight: 100)
 ```
 
 Boosts a document by a numeric value contained in the specified fields. You can also specify a `factor` (an amount to multiply the field value by) and a `modifier` (a function for normalizing values).
@@ -318,7 +342,8 @@ See the [Boosting By Popularity Guide](https://www.elastic.co/guide/en/elasticse
 ### <a id="random"></a>Random
 
 ```ruby
-query = query.boost.random(user.id, 50)
+api = api.boost.random(user.id)
+         .boost.random(seed: user.id, weight: 100)
 ```
 
 Gives each document a randomized boost with a given seed and optional weight. This allows you to show slightly different result sets to different users, but show the same result set to that user every time.
@@ -326,7 +351,7 @@ Gives each document a randomized boost with a given seed and optional weight. Th
 ### <a id="fields"></a>Fields
 
 ```ruby
-query = query.fields(:name, :email, :id)
+api = api.fields(:name, :email, :id)
 ```
 
 Instead of returning the entire document, only return the specified fields.

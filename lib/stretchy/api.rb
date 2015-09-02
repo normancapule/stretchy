@@ -67,7 +67,11 @@ module Stretchy
     end
 
     def match(params = {})
-      add_params params, :query, :context_nodes
+      if params.is_a? Hash
+        add_params params, :query, :context_nodes
+      else
+        add_params Hash[_all: params], :query, :context_nodes
+      end
     end
 
     def more_like(params = {})
@@ -123,8 +127,12 @@ module Stretchy
       add_params params, :boost, :field_value_function_node
     end
 
-    def random(seed)
-      add_params seed, :boost, :random_score_function_node
+    def random(params)
+      if params.is_a? Hash
+        add_params params, :boost, :random_score_function_node
+      else
+        add_params Hash[seed: params], :boost, :random_score_function_node
+      end
     end
 
     def near(params = {})
