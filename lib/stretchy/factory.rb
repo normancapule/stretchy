@@ -33,11 +33,17 @@ module Stretchy
     end
 
     def raw_node(params, context)
-      Node.new(params, context)
+      if context[:boost]
+        raw_boost_node(params, context)
+      else
+        Node.new(params, context)
+      end
     end
 
     def raw_boost_node(params, context)
-      context[:fn_score]  = extract_function_score_options!(params)
+      context[:fn_score] = extract_function_score_options!(params)
+      context[:boost]    ||= true
+      context[:filter]   ||= true
       Node.new(params, context)
     end
 
@@ -79,7 +85,7 @@ module Stretchy
         case val
         when Range
           Node.new(
-            {range: {field: field, gte: val.min, lte: val.max}},
+            {range: {field => {gte: val.min, lte: val.max}}},
             context
           )
         when nil

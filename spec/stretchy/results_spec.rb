@@ -34,6 +34,12 @@ module Stretchy
       end
     end
 
+    describe '#total_pages' do
+      it 'matches response total and limit' do
+        expect(subject.total_pages).to eq(1)
+      end
+    end
+
     describe '#results' do
       subject { results.results }
 

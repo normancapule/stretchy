@@ -32,6 +32,11 @@ module Stretchy
         end].keep_if {|k,v| !is_empty?(v)}
       end
 
+      # must be shared between api & results
+      def current_page(offset, limit)
+        ((offset + 1.0) / limit).ceil
+      end
+
       # coerces ids to integers, unless they contain non-integers
       def coerce_id(id)
         id =~ /\d+/ ? id.to_i : id

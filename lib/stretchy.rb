@@ -48,6 +48,14 @@ module Stretchy
     client.indices.create({index: name}.merge(params)) unless index_exists? name
   end
 
+  def refresh_index(name, params = {})
+    client.indices.refresh({index: name}.merge(params)) if index_exists? name
+  end
+
+  def count_index(name, params = {})
+    client.count({index: name}.merge(params))['count']
+  end
+
   def index_document(params = {})
     Utils.require_params!(:index_document, params, :index, :type, :body)
 
@@ -60,6 +68,10 @@ module Stretchy
 
   def query(options = {})
     API.new(root: options)
+  end
+
+  def fake_results
+    Results.fake
   end
 
   def method_missing(method, *args, &block)

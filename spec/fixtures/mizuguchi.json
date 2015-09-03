@@ -6,6 +6,7 @@
   "url_slug" : "tetsuya-mizuguchi",
   "salary" : 450000,
   "is_sakurai" : false,
+  "is_mizuguchi" : true,
   "first_game" : "2001-11-22T17:25:43.511Z",
   "games" : [
     {

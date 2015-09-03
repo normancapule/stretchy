@@ -9,7 +9,8 @@ module Stretchy
     include Enumerable
     include Utils::Methods
 
-    delegate [:total, :ids, :scores, :explanations, :results,
+    delegate [:total, :total_pages, :current_page, :per_page,
+              :ids, :scores, :explanations, :results,
               :aggregations, :first, :last, :each] => :results
 
     attr_reader :collector, :root, :context
@@ -39,15 +40,14 @@ module Stretchy
     # page 2 = from: per_page, size: per_page
     def page(num = nil, params = {})
       return current_page if num.nil?
-      per_page = params[:limit] || params[:per_page] || limit
-      per_page = per_page.to_i > 0 ? per_page : 1
-      start    = [num.to_i - 1, 0].max
-      add_root from: start * per_page, size: per_page
+      per   = params[:limit] || params[:per_page] || limit
+      per   = per.to_i > 0 ? per.to_i : 1
+      start = [num.to_i - 1, 0].max
+      add_root from: start * per, size: per
     end
 
     def current_page
-      current = [offset, 1].max
-      current > 1 ? (offset / limit).ceil + 1 : current
+      Utils.current_page(offset, limit)
     end
 
     def explain

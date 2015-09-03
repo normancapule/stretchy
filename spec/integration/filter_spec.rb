@@ -41,6 +41,38 @@ describe 'Filters' do
     check subject.filter.query(match: {_all: 'Gamecube'})
   end
 
+  describe 'where filters' do
+    let(:salary_range) { (found['salary'] - 5000)..(found['salary'] + 5000) }
+
+    specify 'term string' do
+      check subject.where(url_slug: found['url_slug'])
+    end
+
+    specify 'term symbol' do
+      check subject.where(url_slug: found['url_slug'].to_sym)
+    end
+
+    specify 'multiple terms' do
+      check subject.where(url_slug: [found['url_slug'], 'not-a-slug'])
+    end
+
+    specify 'range' do
+      check subject.where(salary: salary_range)
+    end
+
+    specify 'nil' do
+      check subject.where(is_mizuguchi: nil)
+    end
+
+    specify 'together' do
+      check subject.where(
+        url_slug:     found['url_slug'],
+        salary:       salary_range,
+        is_mizuguchi: nil
+      )
+    end
+  end
+
   specify 'range filter' do
     check subject.filter.range(salary: {gte: found['salary']})
   end

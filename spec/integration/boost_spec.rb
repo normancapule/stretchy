@@ -11,11 +11,19 @@ describe 'Boosts' do
     expect(api.scores[found['id']]).to be > api.scores[not_found['id']]
   end
 
-  specify 'filter' do
+  # specify 'filter' do
+  #   check subject.boost.filter(term: {url_slug: found['url_slug']})
+  # end
+
+  # specify 'query' do
+  #   check subject.boost.query(match: {_all: found['name']})
+  # end
+
+  specify 'where' do
     check subject.boost.where(url_slug: found['url_slug'])
   end
 
-  specify 'query' do
+  specify 'match' do
     check subject.boost.match(_all: found['name'])
   end
 

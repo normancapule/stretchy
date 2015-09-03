@@ -8,29 +8,47 @@ module Stretchy
 
     attr_reader :request, :response
 
+    # implements null object pattern
+    def self.fake
+      self.new(
+        {size: API::DEFAULT_PER_PAGE, fake: true},
+        {'hits' => {'total' => 0, 'hits' => [], 'aggregations' => {}}}
+      )
+    end
+
     def initialize(request, response)
       @request  = request
       @response = response
     end
 
+    def fake?
+      !!request[:fake]
+    end
+
     def limit
-      request['size'] || API::DEFAULT_PER_PAGE
+      (request['size'] || request[:size] || API::DEFAULT_PER_PAGE).to_i
     end
     alias :size         :limit
     alias :limit_value  :limit
+    alias :per_page     :limit
 
     def offset
-      request['from'] || 0
+      (request['from'] || request[:from] || 0).to_i
     end
     alias :from :offset
+    alias :offset_value :offset
 
     def current_page
-      current = [offset, 1].max
-      current > 1 ? (offset / limit).ceil + 1 : current
+      Utils.current_page(offset, limit)
     end
 
     def total
       response['hits']['total']
+    end
+    alias :total_count :total
+
+    def total_pages
+      (total.to_f / limit_value).ceil
     end
 
     def results
