@@ -35,7 +35,7 @@ module Stretchy
     def offset
       (request['from'] || request[:from] || 0).to_i
     end
-    alias :from :offset
+    alias :from         :offset
     alias :offset_value :offset
 
     def current_page
@@ -45,7 +45,10 @@ module Stretchy
     def total
       response['hits']['total']
     end
-    alias :total_count :total
+    alias :total_count  :total
+    alias :count        :total
+    alias :length       :total
+    alias :size         :total
 
     def total_pages
       (total.to_f / limit_value).ceil
@@ -69,6 +72,7 @@ module Stretchy
       end
     end
     alias :hits :results
+    alias :to_a :results
 
     def ids
       @ids ||= response['hits']['hits'].map {|r| coerce_id r['_id'] }

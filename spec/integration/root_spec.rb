@@ -19,6 +19,10 @@ describe 'Root actions' do
     expect(subject.limit(1).count).to eq(1)
   end
 
+  it 'returns total even with limited size' do
+    expect(subject.limit(1).total).to eq(3)
+  end
+
   it 'runs an offset' do
     expect(subject.offset(1).count).to eq(subject.count - 1)
   end

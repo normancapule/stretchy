@@ -9,10 +9,6 @@ module Stretchy
     include Enumerable
     include Utils::Methods
 
-    delegate [:total, :total_pages, :current_page, :per_page,
-              :ids, :scores, :explanations, :results,
-              :aggregations, :first, :last, :each] => :results
-
     attr_reader :collector, :root, :context
 
     def initialize(options = {})
@@ -154,12 +150,14 @@ module Stretchy
       @response ||= Stretchy.search(request)
     end
 
-    def results
+    def results_obj
       @results ||= Results.new request, response
     end
 
     def method_missing(method, *args, &block)
-      if collector.respond_to?(method)
+      if results_obj.respond_to?(method)
+        results_obj.send(method, *args, &block)
+      elsif collector.respond_to?(method)
         collector.send(method, *args, &block)
       else
         super
