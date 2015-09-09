@@ -1,0 +1,27 @@
+{
+  "index": "stretchy_test",
+  "type": "game_dev",
+  "explain": true,
+  "size": 20,
+  "from": 0,
+  "body": {
+    "query": {
+      "filtered": {
+        "query": {
+          "match": {
+            "_all": "game"
+          }
+        },
+        "filter": {
+          "terms": {
+            "url_slug": [
+              "masahiro-sakurai",
+              "tetsuya-mizuguchi",
+              "suda-51"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

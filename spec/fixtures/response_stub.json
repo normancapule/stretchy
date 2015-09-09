@@ -1,0 +1,258 @@
+{
+  "took": 1,
+  "timed_out": false,
+  "_shards": {
+    "total": 5,
+    "successful": 5,
+    "failed": 0
+  },
+  "hits": {
+    "total": 3,
+    "max_score": 0.053604983,
+    "hits": [
+      {
+        "_shard": 4,
+        "_node": "zOl44WpdTNuEKuJXuqq5NA",
+        "_index": "stretchy_test",
+        "_type": "game_dev",
+        "_id": "3",
+        "_score": 0.053604983,
+        "_source": {
+          "id": 3,
+          "name": "Tetsuya Mizuguchi",
+          "title": "Game Musician",
+          "company": "United Game Artists",
+          "url_slug": "tetsuya-mizuguchi",
+          "salary": 450000,
+          "is_sakurai": false,
+          "first_game": "2001-11-22T17:25:43.511Z",
+          "games": [
+            {
+              "id": 8,
+              "title": "Rez",
+              "platforms": [
+                "Dreamcast"
+              ]
+            },
+            {
+              "id": 9,
+              "title": "Lumines",
+              "platforms": [
+                "PlayStation Portable",
+                "PlayStation 3",
+                "Xbox 360",
+                "iOS"
+              ]
+            },
+            {
+              "id": 10,
+              "title": "Child of Eden",
+              "platforms": [
+                "Xbox 360",
+                "PlayStation 3"
+              ]
+            }
+          ],
+          "location": "Sendai, Japan",
+          "coords": {
+            "lat": 38.2667,
+            "lon": 140.8667
+          },
+          "bio": "Tetsuya Mizuguchi, born May 22, 1965 in Otaru, Hokkaido, Japan) is a video game designer and co-founder (along with ex-Sega developers) of the video game development firm Q Entertainment. He formerly worked for Sega as a producer in their Sega AM3 'arcade machines' team, developing games like Sega Rally and Sega Touring Car Championship, before moving on to become the head of Sega's United Game Artists division, the team responsible for the Rez and Space Channel 5. Mizuguchi is known for creating video games that incorporate a notable emphasis on interactive sound design, evidenced by Rez, Lumines, and Child of Eden."
+        },
+        "_explanation": {
+          "value": 0.053604983,
+          "description": "weight(_all:game in 0) [PerFieldSimilarity], result of:",
+          "details": [
+            {
+              "value": 0.053604983,
+              "description": "fieldWeight in 0, product of:",
+              "details": [
+                {
+                  "value": 2.236068,
+                  "description": "tf(freq=5.0), with freq of:",
+                  "details": [
+                    {
+                      "value": 5.0,
+                      "description": "termFreq=5.0"
+                    }
+                  ]
+                },
+                {
+                  "value": 0.30685282,
+                  "description": "idf(docFreq=1, maxDocs=1)"
+                },
+                {
+                  "value": 0.078125,
+                  "description": "fieldNorm(doc=0)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "_shard": 2,
+        "_node": "zOl44WpdTNuEKuJXuqq5NA",
+        "_index": "stretchy_test",
+        "_type": "game_dev",
+        "_id": "1",
+        "_score": 0.033902764,
+        "_source": {
+          "id": 1,
+          "name": "Masahiro Sakurai",
+          "title": "Game Developer",
+          "company": "Nintendo",
+          "url_slug": "masahiro-sakurai",
+          "salary": 900000,
+          "is_sakurai": true,
+          "first_game": "1999-01-21T18:25:43.511Z",
+          "games": [
+            {
+              "id": 1,
+              "title": "Super Smash Bros",
+              "platforms": [
+                "Nintendo 64"
+              ]
+            },
+            {
+              "id": 2,
+              "title": "Smash Bros Melee",
+              "platforms": [
+                "GameCube"
+              ]
+            },
+            {
+              "id": 3,
+              "title": "Smash Bros Brawl",
+              "platforms": [
+                "Wii"
+              ]
+            },
+            {
+              "id": 4,
+              "title": "Smash Bros WiiU",
+              "platforms": [
+                "Wii U"
+              ]
+            }
+          ],
+          "location": "Kyoto, Japan",
+          "coords": {
+            "lat": 35.0117,
+            "lon": 135.7683
+          },
+          "bio": "Masahiro Sakurai (born 3 August 1970) is a Japanese video game director, designer, writer and voice actor, best known as the creator and director of the Kirby and the Super Smash Bros. series. Mostly working on games for Nintendo platforms, he is currently the Director of Software Development for his company Sora Ltd. He is also the author of a weekly column for Famitsu magazine and has developed a cult following for his streamlined, yet deep gameplay. Apart from his work in the Kirby and Super Smash Bros. series, he directed the acclaimed games Meteos and Kid Icarus: Uprising. He also voiced the character King Dedede in Kirby 64: The Crystal Shards and in the Super Smash Bros. series."
+        },
+        "_explanation": {
+          "value": 0.033902764,
+          "description": "weight(_all:game in 0) [PerFieldSimilarity], result of:",
+          "details": [
+            {
+              "value": 0.033902764,
+              "description": "fieldWeight in 0, product of:",
+              "details": [
+                {
+                  "value": 1.4142135,
+                  "description": "tf(freq=2.0), with freq of:",
+                  "details": [
+                    {
+                      "value": 2.0,
+                      "description": "termFreq=2.0"
+                    }
+                  ]
+                },
+                {
+                  "value": 0.30685282,
+                  "description": "idf(docFreq=1, maxDocs=1)"
+                },
+                {
+                  "value": 0.078125,
+                  "description": "fieldNorm(doc=0)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "_shard": 3,
+        "_node": "zOl44WpdTNuEKuJXuqq5NA",
+        "_index": "stretchy_test",
+        "_type": "game_dev",
+        "_id": "2",
+        "_score": 0.027122213,
+        "_source": {
+          "id": 2,
+          "name": "Goichi Suda",
+          "title": "Game Artiste",
+          "company": "Suda51",
+          "url_slug": "suda-51",
+          "salary": 300000,
+          "is_sakurai": false,
+          "first_game": "2005-06-09T23:15:43.511Z",
+          "games": [
+            {
+              "id": 5,
+              "title": "Killer7",
+              "platforms": [
+                "GameCube"
+              ]
+            },
+            {
+              "id": 6,
+              "title": "No More Heroes",
+              "platforms": [
+                "GameCube"
+              ]
+            },
+            {
+              "id": 7,
+              "title": "Shadows of the Damned",
+              "platforms": [
+                "Xbox 360",
+                "PlayStation 3"
+              ]
+            }
+          ],
+          "location": "Tokyo, Japan",
+          "coords": {
+            "lat": 35.6833,
+            "lon": 139.6833
+          },
+          "bio": "Goichi Suda, born January 2, 1968), also known as Suda51, is the CEO of Grasshopper Manufacture and a former designer at Human Entertainment. The '51' in his nickname, Suda51, is a pun on his given name. In Japanese, 'Go' means 5 and 'ichi' means 1. His works include Moonlight Syndrome, The Silver Case, Flower, Sun and Rain, Michigan, killer7, the No More Heroes series, Shadows of the Damned and most recently, Lollipop Chainsaw and Killer is Dead. He has been called an 'auteur' video game director. Suda and his studio also frequently collaborate with other developers, including creating the story sequences for the Wii title Fatal Frame IV: Mask of the Lunar Eclipse, Suda's involvement in Super Smash Bros. Brawl (his nickname 'Suda51' appears in the credits for the game's 'Subspace Emissary' mode), and a radio drama prequel to Snatcher with Hideo Kojima titled Sdatcher."
+        },
+        "_explanation": {
+          "value": 0.027122213,
+          "description": "weight(_all:game in 0) [PerFieldSimilarity], result of:",
+          "details": [
+            {
+              "value": 0.027122213,
+              "description": "fieldWeight in 0, product of:",
+              "details": [
+                {
+                  "value": 1.4142135,
+                  "description": "tf(freq=2.0), with freq of:",
+                  "details": [
+                    {
+                      "value": 2.0,
+                      "description": "termFreq=2.0"
+                    }
+                  ]
+                },
+                {
+                  "value": 0.30685282,
+                  "description": "idf(docFreq=1, maxDocs=1)"
+                },
+                {
+                  "value": 0.0625,
+                  "description": "fieldNorm(doc=0)"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
