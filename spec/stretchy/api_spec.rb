@@ -64,5 +64,14 @@ module Stretchy
 
     end
 
+    describe '#filter_node' do
+      subject { api.match(name: 'sakurai') }
+
+      it 'does build response before checking with collector' do
+        expect_any_instance_of(API).not_to receive(:results_obj)
+        subject.filter_node.json
+      end
+    end
+
   end
 end

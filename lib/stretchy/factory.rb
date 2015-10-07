@@ -76,6 +76,7 @@ module Stretchy
 
     def params_to_queries(params, context = default_context)
       params.map do |field, val|
+        val = val.join if val.is_a? Array
         Node.new({match: {field => val}}, context)
       end
     end
