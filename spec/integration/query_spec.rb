@@ -21,6 +21,11 @@ describe 'Queries' do
     check subject.match('sakurai')
   end
 
+  specify 'array match query' do
+    names = [found['name'], extra['name']]
+    check subject.match(name: names)
+  end
+
   specify 'basic filter' do
     check subject.query(term: { url_slug: found['url_slug']})
   end

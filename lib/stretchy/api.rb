@@ -11,6 +11,21 @@ module Stretchy
 
     attr_reader :collector, :root, :context
 
+    delegate [
+      :total,
+      :total_count,
+      :length,
+      :size,
+      :total_pages,
+      :results,
+      :hits,
+      :to_a,
+      :ids,
+      :scores,
+      :explanations,
+      :aggregations
+    ] => :results_obj
+
     def initialize(options = {})
       @collector  = AndCollector.new(options[:nodes] || [], query: true)
       @root       = options[:root]     || {}
@@ -154,10 +169,12 @@ module Stretchy
       @results ||= Results.new request, response
     end
 
+    def count
+      results_obj.ids.count
+    end
+
     def method_missing(method, *args, &block)
-      if results_obj.respond_to?(method)
-        results_obj.send(method, *args, &block)
-      elsif collector.respond_to?(method)
+      if collector.respond_to?(method)
         collector.send(method, *args, &block)
       else
         super
