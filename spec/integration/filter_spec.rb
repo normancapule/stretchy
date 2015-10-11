@@ -68,8 +68,8 @@ describe 'Filters' do
       check subject.where(is_mizuguchi: nil)
     end
 
-    specify 'hash-to-dotted-keys' do
-      check subject.where(games: {id: 2})
+    specify 'nested filters' do
+      check subject.where(games: {id: 99, publisher: "nintendo"})
     end
 
     specify 'together' do

@@ -22,6 +22,22 @@
       "id" : 7,
       "title" : "Shadows of the Damned",
       "platforms" : ["Xbox 360", "PlayStation 3"]
+    },
+    {
+      "id" : 99,
+      "title" : "Unknown Game",
+      "publisher" : "Suda51",
+      "platforms" : ["PC"],
+      "comments" : [
+        {
+          "user" : "Alice",
+          "message" : "I've never heard of this."
+        },
+        {
+          "user" : "Bob",
+          "message" : "Awesome!"
+        }
+      ]
     }
   ],
   "location" : "Tokyo, Japan",

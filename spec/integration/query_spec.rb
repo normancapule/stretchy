@@ -29,8 +29,24 @@ describe 'Queries' do
     check subject.match(name: [found['name'], extra['name']])
   end
 
-  specify 'hash-to-dotted-keys' do
-    check subject.match(games: { title: "Smash Bros"})
+  # CAUTION: only works one level deep
+  #
+  # {games: {title: "Unknown", comments: [{user: "alice", body: "Sucks"}]}}
+  # {games: {title: "Unknown", comments: [{user: "bob", body: "Sucks"}]}}
+  # .match(games: {title: 'unknown', comments: {user: "alice", body: "Sucks"}})
+  specify 'nested queries' do
+    check subject.match(games: { title: "Unknown"})
+  end
+
+  specify 'deeply nested queries' do
+    skip "TODO - make deeply nested queries work"
+    check subject.match(games: {
+      title: "Unknown",
+      comments: {
+        message: "Awesome!",
+        user: "Alice"
+      }
+    })
   end
 
   specify 'basic filter' do

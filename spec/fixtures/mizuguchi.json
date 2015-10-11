@@ -22,7 +22,23 @@
     {
       "id" : 10,
       "title" : "Child of Eden",
-      "platforms" : ["Xbox 360", "PlayStation 3"]
+      "platforms" : ["Xbox 360", "PlayStation 3", "Wii U"]
+    },
+    {
+      "id" : 99,
+      "title" : "Unknown Game",
+      "publisher" : "Microsoft",
+      "platforms" : ["PC"],
+      "comments" : [
+        {
+          "user" : "Alice",
+          "message" : "It's okay, I guess"
+        },
+        {
+          "user" : "Bob",
+          "message" : "Awesome!"
+        }
+      ]
     }
   ],
   "location" : "Sendai, Japan",

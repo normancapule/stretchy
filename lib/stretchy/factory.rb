@@ -80,20 +80,24 @@ module Stretchy
     end
 
     def params_to_queries(params, context = default_context)
-      DottableHash[params].to_dotted.map do |field, val|
+      params.map do |field, val|
         case val
         when Array
-          Node.new({match: {
-            field => {
-              query: val.join(' '),
-              operator: 'or'
-            }
-          }}, context)
-        when Regexp
           Node.new(
-            {regexp: {field => {value: val}}},
+            {match: {field => {query: val.join(' '), operator: 'or'}}},
             context
           )
+        when Regexp
+          Node.new({regexp: {field => {value: val}}}, context)
+        when Hash
+          Node.new({
+            nested: {
+              path: field,
+              query: API.new(context: context).match(
+                DottableHash[field => val].to_dotted
+              ).json
+            }
+          }, context)
         else
           Node.new({match: {field => val}}, context)
         end
@@ -101,30 +105,27 @@ module Stretchy
     end
 
     def params_to_filters(params, context = default_context)
-      DottableHash[params].to_dotted.map do |field, val|
+      params.map do |field, val|
         case val
         when Range
-          Node.new(
-            {range: {field => {gte: val.min, lte: val.max}}},
-            context
-          )
+          Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
         when nil
-          Node.new(
-            {missing: {field: field}},
-            context
-          )
+          Node.new({missing: {field: field}}, context)
+        when Hash
+          Node.new({
+            nested: {
+              path: field,
+              filter: API.new(context: context).where(
+                DottableHash[field => val].to_dotted
+              ).filter_json
+            }
+          }, context)
         when Regexp
-          Node.new(
-            {regexp: {field => {value: val}}},
-            context
-          )
+          Node.new({regexp: {field => {value: val}}}, context)
         else
-          Node.new(
-            {terms: {field => Array(val)}},
-            context
-          )
+          Node.new({terms: {field => Array(val)}}, context)
         end
-      end.flatten
+      end
     end
 
     # https://www.elastic.co/guide/en/elasticsearch/guide/current/proximity-relevance.html

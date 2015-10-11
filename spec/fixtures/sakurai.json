@@ -27,6 +27,22 @@
       "id" : 4,
       "title" : "Smash Bros WiiU",
       "platforms" : ["Wii U"]
+    },
+    {
+      "id" : 99,
+      "title" : "Unknown Game",
+      "publisher" : "Nintendo",
+      "platforms" : ["PC"],
+      "comments" : [
+        {
+          "user" : "Alice",
+          "message" : "Awesome!"
+        },
+        {
+          "user" : "Bob",
+          "message" : "Awesome!"
+        }
+      ]
     }
   ],
   "location" : "Kyoto, Japan",
