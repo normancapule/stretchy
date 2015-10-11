@@ -73,5 +73,12 @@ module Stretchy
       end
     end
 
+    describe '#opts' do
+      subject { described_class.new(one: 1, two: 2).match(name: 'sakurai')}
+
+      it 'preserves unknown input options' do
+        expect(subject.opts).to include(one: 1, two: 2)
+      end
+    end
   end
 end

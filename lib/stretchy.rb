@@ -10,6 +10,7 @@ require 'stretchy/errors'
 require 'stretchy/factory'
 require 'stretchy/node'
 require 'stretchy/results'
+require 'stretchy/scopes'
 require 'stretchy/utils'
 require 'stretchy/version'
 
