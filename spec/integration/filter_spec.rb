@@ -5,7 +5,11 @@ describe 'Filters' do
   let(:not_found) { fixture(:mizuguchi) }
   let(:extra) { fixture(:suda) }
 
-  subject { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE) }
+  def api
+    Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE)
+  end
+
+  subject { api }
 
   def check(api)
     ids = api.ids
@@ -64,6 +68,10 @@ describe 'Filters' do
       check subject.where(is_mizuguchi: nil)
     end
 
+    specify 'hash-to-dotted-keys' do
+      check subject.where(games: {id: 2})
+    end
+
     specify 'together' do
       check subject.where(
         url_slug:     found['url_slug'],
@@ -83,5 +91,4 @@ describe 'Filters' do
       coords: [found['coords']['lon'], found['coords']['lat']]
     )
   end
-
 end

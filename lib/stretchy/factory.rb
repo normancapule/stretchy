@@ -41,10 +41,18 @@ module Stretchy
     end
 
     def raw_boost_node(params, context)
+      boost_params       = extract_boost_params!(params)
       context[:fn_score] = extract_function_score_options!(params)
-      context[:boost]    ||= true
-      context[:filter]   ||= true
-      Node.new(params, context)
+      context[:boost]    = true
+      context[:filter]   = true
+      if context[:query]
+        json = params[:query]  ? params : {query: params}
+        json = params[:filter] ? params : {filter: json}
+        Node.new(json.merge(boost_params), context)
+      else
+        json = params[:filter] ? params : {filter: params}
+        Node.new(json.merge(boost_params), context)
+      end
     end
 
     def context_nodes(params, context = default_context)
@@ -67,22 +75,33 @@ module Stretchy
       if context[:query]
         Node.new(boost_params.merge(filter: {query: collector.json}), context)
       else
-        Node.new(
-          boost_params.merge(filter: collector.filter_node.json),
-          context
-        )
+        Node.new(boost_params.merge(filter: collector.filter_json), context)
       end
     end
 
     def params_to_queries(params, context = default_context)
-      params.map do |field, val|
-        val = val.join if val.is_a? Array
-        Node.new({match: {field => val}}, context)
+      DottableHash[params].to_dotted.map do |field, val|
+        case val
+        when Array
+          Node.new({match: {
+            field => {
+              query: val.join(' '),
+              operator: 'or'
+            }
+          }}, context)
+        when Regexp
+          Node.new(
+            {regexp: {field => {value: val}}},
+            context
+          )
+        else
+          Node.new({match: {field => val}}, context)
+        end
       end
     end
 
     def params_to_filters(params, context = default_context)
-      params.map do |field, val|
+      DottableHash[params].to_dotted.map do |field, val|
         case val
         when Range
           Node.new(
@@ -94,13 +113,18 @@ module Stretchy
             {missing: {field: field}},
             context
           )
+        when Regexp
+          Node.new(
+            {regexp: {field => {value: val}}},
+            context
+          )
         else
           Node.new(
             {terms: {field => Array(val)}},
             context
           )
         end
-      end
+      end.flatten
     end
 
     # https://www.elastic.co/guide/en/elasticsearch/guide/current/proximity-relevance.html

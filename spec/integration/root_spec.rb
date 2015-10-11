@@ -31,5 +31,4 @@ describe 'Root actions' do
     results = subject.explain.match(_all: found['name']).results
     expect(results.first['_explanation']).to_not be_empty
   end
-
 end

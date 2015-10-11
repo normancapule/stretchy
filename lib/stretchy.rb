@@ -6,6 +6,7 @@ require 'elasticsearch'
 
 require 'stretchy/api'
 require 'stretchy/and_collector'
+require 'stretchy/dottable_hash'
 require 'stretchy/errors'
 require 'stretchy/factory'
 require 'stretchy/node'

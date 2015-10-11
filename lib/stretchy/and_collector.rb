@@ -41,11 +41,15 @@ module Stretchy
       end
     end
 
+    def filter_json
+      filter_node.json
+    end
+
     def filter_node
       @filter_node ||= if query_nodes.any? || boost_nodes.any?
         Node.new({query: filtered_query_node.json}, context)
       else
-        Node.new(compile_nodes(filter_nodes).json, context)
+        fn = Node.new(compile_nodes(filter_nodes).json, context)
       end
     end
 

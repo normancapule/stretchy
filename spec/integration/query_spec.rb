@@ -5,7 +5,11 @@ describe 'Queries' do
   let(:not_found) { fixture(:mizuguchi) }
   let(:extra) { fixture(:suda) }
 
-  subject { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE) }
+  def api
+    Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE)
+  end
+
+  subject { api }
 
   def check(api)
     ids = api.ids
@@ -22,8 +26,11 @@ describe 'Queries' do
   end
 
   specify 'array match query' do
-    names = [found['name'], extra['name']]
-    check subject.match(name: names)
+    check subject.match(name: [found['name'], extra['name']])
+  end
+
+  specify 'hash-to-dotted-keys' do
+    check subject.match(games: { title: "Smash Bros"})
   end
 
   specify 'basic filter' do
@@ -50,7 +57,7 @@ describe 'Queries' do
   end
 
   specify 'range query' do
-    check subject.query.range(salary: {gte: found['salary']})
+    check subject.query.range(salary: { gte: found['salary']})
   end
 
   specify 'more_like' do
@@ -65,4 +72,15 @@ describe 'Queries' do
     check subject.fulltext(found['name'])
   end
 
+  describe 'api-based querying' do
+    let(:first) { api.match(name: found['name']) }
+
+    it 'can accept apis as queries' do
+      check api.query(first)
+    end
+
+    it 'can nest queries' do
+      check api.query(bool: {must: [first.json]})
+    end
+  end
 end

@@ -29,8 +29,9 @@ module Stretchy
     def initialize(opts = {})
       @opts       = opts
       @collector  = AndCollector.new(opts[:nodes] || [], query: true)
-      @root       = opts[:root]     || {}
-      @context    = opts[:context]  || {}
+      @root       = opts[:root]       || {}
+      @query_root = opts[:query_root] || {}
+      @context    = opts[:context]    || {}
     end
 
     def context?(*args)
