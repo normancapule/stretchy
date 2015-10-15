@@ -9,7 +9,7 @@ module Stretchy
     include Enumerable
     include Utils::Methods
 
-    attr_reader :collector, :root, :context
+    attr_reader :collector, :opts, :root, :context
 
     delegate [
       :total,
@@ -26,10 +26,11 @@ module Stretchy
       :aggregations
     ] => :results_obj
 
-    def initialize(options = {})
-      @collector  = AndCollector.new(options[:nodes] || [], query: true)
-      @root       = options[:root]     || {}
-      @context    = options[:context]  || {}
+    def initialize(opts = {})
+      @opts       = opts
+      @collector  = AndCollector.new(opts[:nodes] || [], query: true)
+      @root       = opts[:root]     || {}
+      @context    = opts[:context]  || {}
     end
 
     def context?(*args)
@@ -213,23 +214,27 @@ module Stretchy
       end
 
       def add_nodes(additional)
-        self.class.new nodes: collector.nodes + Array(additional), root: root
+        self.class.new(opts.merge(
+          nodes: collector.nodes + Array(additional),
+          root:  root,
+          context: {}
+        ))
       end
 
       def add_root(options = {})
-        self.class.new(
+        self.class.new(opts.merge(
           nodes:    collector.nodes,
           root:     root.merge(options),
           context:  context
-        )
+        ))
       end
 
       def add_context(*args)
-        self.class.new(
+        self.class.new(opts.merge(
           nodes:   collector.nodes,
           root:    root,
           context: context.merge(args_to_context(*args))
-        )
+        ))
       end
 
   end
