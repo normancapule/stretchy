@@ -41,10 +41,12 @@ module Stretchy
     end
 
     def raw_boost_node(params, context)
+      boost_params       = extract_boost_params!(params)
       context[:fn_score] = extract_function_score_options!(params)
       context[:boost]    ||= true
       context[:filter]   ||= true
-      Node.new(params, context)
+      json = context[:query] ? {query: params} : params
+      Node.new(boost_params.merge(filter: json), context)
     end
 
     def context_nodes(params, context = default_context)
@@ -76,8 +78,17 @@ module Stretchy
 
     def params_to_queries(params, context = default_context)
       params.map do |field, val|
-        val = val.join if val.is_a? Array
-        Node.new({match: {field => val}}, context)
+        case val
+        when Array
+          Node.new({match: {
+            field     => {query: val.join(' '),
+            :operator => :or
+          }}}, context)
+        when Range
+          Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
+        else
+          Node.new({match: {field => val}}, context)
+        end
       end
     end
 
@@ -85,20 +96,11 @@ module Stretchy
       params.map do |field, val|
         case val
         when Range
-          Node.new(
-            {range: {field => {gte: val.min, lte: val.max}}},
-            context
-          )
+          Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
         when nil
-          Node.new(
-            {missing: {field: field}},
-            context
-          )
+          Node.new({missing: {field: field}}, context)
         else
-          Node.new(
-            {terms: {field => Array(val)}},
-            context
-          )
+          Node.new({terms: {field => Array(val)}}, context)
         end
       end
     end
