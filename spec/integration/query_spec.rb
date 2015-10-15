@@ -22,8 +22,8 @@ describe 'Queries' do
   end
 
   specify 'array match query' do
-    names = [found['name'], extra['name']]
-    check subject.match(name: names)
+    companies = [found['company'], extra['company']]
+    check subject.match(company: companies)
   end
 
   specify 'basic filter' do

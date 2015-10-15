@@ -76,8 +76,17 @@ module Stretchy
 
     def params_to_queries(params, context = default_context)
       params.map do |field, val|
-        val = val.join if val.is_a? Array
-        Node.new({match: {field => val}}, context)
+        case val
+        when Array
+          Node.new({match: {
+            field     => {query: val.join(' '),
+            :operator => :or
+          }}}, context)
+        when Range
+          Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
+        else
+          Node.new({match: {field => val}}, context)
+        end
       end
     end
 
@@ -85,20 +94,11 @@ module Stretchy
       params.map do |field, val|
         case val
         when Range
-          Node.new(
-            {range: {field => {gte: val.min, lte: val.max}}},
-            context
-          )
+          Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
         when nil
-          Node.new(
-            {missing: {field: field}},
-            context
-          )
+          Node.new({missing: {field: field}}, context)
         else
-          Node.new(
-            {terms: {field => Array(val)}},
-            context
-          )
+          Node.new({terms: {field => Array(val)}}, context)
         end
       end
     end
