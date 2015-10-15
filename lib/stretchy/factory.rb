@@ -41,10 +41,12 @@ module Stretchy
     end
 
     def raw_boost_node(params, context)
+      boost_params       = extract_boost_params!(params)
       context[:fn_score] = extract_function_score_options!(params)
       context[:boost]    ||= true
       context[:filter]   ||= true
-      Node.new(params, context)
+      json = context[:query] ? {query: params} : params
+      Node.new(boost_params.merge(filter: json), context)
     end
 
     def context_nodes(params, context = default_context)
