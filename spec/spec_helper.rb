@@ -12,22 +12,13 @@ Gem.find_files('**/*.json').each do |path|
   FIXTURES[name] = JSON.parse(File.read(path))
 end
 
-# LOGGER        = Logger.new(STDOUT)
-# LOGGER.level  = Logger::DEBUG
-MAPPING  = {
-  game_dev: {
-    properties: {
-      coords: { type: :geo_point },
-      url_slug: { type: :string, index: :not_analyzed }
-    }
-  }
-}
-
 RSpec.configure do |config|
-
   config.before(:suite) do
     Stretchy.delete_index(SPEC_INDEX)
-    Stretchy.create_index(SPEC_INDEX, body: {mappings: MAPPING})
+    Stretchy.create_index(SPEC_INDEX, body: {
+      mappings: FIXTURES[:mappings_stub]
+    })
+
     FIXTURES.each do |name, data|
       next if name =~ /stub/
       Stretchy.index_document(
@@ -39,7 +30,32 @@ RSpec.configure do |config|
     end
     Stretchy.client.indices.refresh(index: SPEC_INDEX)
   end
+end
 
+RSpec.shared_context 'integration specs', :integration do
+  let(:api) { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE) }
+  let(:found) { FIXTURES[:sakurai] }
+  let(:not_found) { FIXTURES[:mizuguchi] }
+  let(:extra) { FIXTURES[:suda] }
+
+  subject { api }
+
+  def check_query(a)
+    ids = a.ids
+    expect(ids).to      include(found['id'])
+    expect(ids).not_to  include(not_found['id'])
+  end
+
+  def check_filter(a)
+    check_query(a)
+    scores = api.scores.values
+    expect(scores.all?{|s| s == scores.first}).to eq(true)
+  end
+
+  def check_boost(a)
+    scores = a.scores
+    expect(scores[found['id']]).to be > scores[not_found['id']]
+  end
 end
 
 def fixture(name)

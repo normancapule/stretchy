@@ -1,37 +1,43 @@
 require 'spec_helper'
 
-describe 'Queries' do
-  let(:found) { fixture(:sakurai) }
-  let(:not_found) { fixture(:mizuguchi) }
-  let(:extra) { fixture(:suda) }
+describe 'Queries', :integration do
+  specify 'basic query' do
+    check_query subject.query(match: { name: "sakurai"})
+  end
 
-  subject { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE) }
+  describe 'match filters' do
+    specify 'string query' do
+      check_query subject.match('sakurai')
+    end
 
-  def check(api)
-    ids = api.ids
-    expect(ids).to include(found['id'])
-    expect(ids).to_not include(not_found['id'])
+    specify 'hash query' do
+      check_query subject.match(name: 'sakurai')
+    end
+
+    specify 'array match query' do
+      companies = [found['company'], extra['company']]
+      check_query subject.match(company: companies)
+    end
+
+    describe 'nested hash queries' do
+      specify 'dotted hash match query' do
+        check_query subject.match(games: {likes: {user: 'stacy'}})
+      end
+
+      specify 'nested hash match query' do
+        check_query subject.match(nested: true,
+          games: {comments: {comment: 'formed'}}
+        )
+      end
+    end
   end
 
   specify 'basic query' do
-    check subject.query(match: { name: "sakurai"})
-  end
-
-  specify 'string query' do
-    check subject.match('sakurai')
-  end
-
-  specify 'array match query' do
-    companies = [found['company'], extra['company']]
-    check subject.match(company: companies)
-  end
-
-  specify 'basic filter' do
-    check subject.query(term: { url_slug: found['url_slug']})
+    check_query subject.query(term: { url_slug: found['url_slug']})
   end
 
   specify 'not query' do
-    check subject.not.query(term: { url_slug: not_found['url_slug']})
+    check_query subject.not.query(term: { url_slug: not_found['url_slug']})
   end
 
   specify 'should query' do
@@ -50,11 +56,11 @@ describe 'Queries' do
   end
 
   specify 'range query' do
-    check subject.query.range(salary: {gte: found['salary']})
+    check_query subject.query.range(salary: {gte: found['salary']})
   end
 
   specify 'more_like' do
-    check subject.more_like(
+    check_query subject.more_like(
       like_text:        found['name'],
       min_doc_freq:     1,
       min_term_freq:    1
@@ -62,7 +68,11 @@ describe 'Queries' do
   end
 
   specify 'fulltext query' do
-    check subject.fulltext(found['name'])
+    check_query subject.fulltext(found['name'])
+  end
+
+  describe 'nested queries' do
+
   end
 
 end

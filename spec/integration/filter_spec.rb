@@ -1,71 +1,66 @@
 require 'spec_helper'
 
-describe 'Filters' do
-  let(:found) { fixture(:sakurai) }
-  let(:not_found) { fixture(:mizuguchi) }
-  let(:extra) { fixture(:suda) }
-
-  subject { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE) }
-
-  def check(api)
-    ids = api.ids
-    expect(ids).to include(found['id'])
-    expect(ids).to_not include(not_found['id'])
-
-    # filters do not affect document scores, so make sure this
-    # is running filters
-    scores = api.scores.values
-    expect(scores.all?{|s| s == scores.first}).to eq(true)
-  end
-
+describe 'Filters', :integration do
   specify 'basic filter' do
-    check(subject.filter(terms: {id: [found['id'], extra['id']]}))
+    check_filter subject.filter(terms: {id: [found['id'], extra['id']]})
   end
 
   specify 'multiple filters' do
-    check subject.filter(terms: {id: [found['id'], extra['id']]})
+    check_filter subject.filter(terms: {id: [found['id'], extra['id']]})
                  .filter(term: {url_slug: found['url_slug']})
   end
 
   specify 'not filter' do
-    check subject.not.filter(term: {id: not_found['id']})
+    check_filter subject.not.filter(term: {id: not_found['id']})
   end
 
   # these are kind of useless except minimum_should_match
   specify 'should filters' do
-    check subject.should.filter(terms: {id: [found['id'], extra['id']]})
+    check_filter subject.should.filter(terms: {id: [found['id'], extra['id']]})
                  .should.filter(term: {url_slug: found['url_slug']})
   end
 
   specify 'query filter' do
-    check subject.filter.query(match: {_all: 'Gamecube'})
+    check_filter subject.filter.query(match: {_all: 'Gamecube'})
   end
 
   describe 'where filters' do
     let(:salary_range) { (found['salary'] - 5000)..(found['salary'] + 5000) }
 
     specify 'term string' do
-      check subject.where(url_slug: found['url_slug'])
+      check_filter subject.where(url_slug: found['url_slug'])
     end
 
     specify 'term symbol' do
-      check subject.where(url_slug: found['url_slug'].to_sym)
+      check_filter subject.where(url_slug: found['url_slug'].to_sym)
     end
 
-    specify 'multiple terms' do
-      check subject.where(url_slug: [found['url_slug'], 'not-a-slug'])
+    specify 'array terms' do
+      check_filter subject.where(url_slug: [found['url_slug'], 'not-a-slug'])
     end
 
     specify 'range' do
-      check subject.where(salary: salary_range)
+      check_filter subject.where(salary: salary_range)
     end
 
     specify 'nil' do
-      check subject.where(is_mizuguchi: nil)
+      check_filter subject.where(is_mizuguchi: nil)
+    end
+
+    describe 'nested hash filters' do
+      specify 'dotted hash terms query' do
+        check_filter subject.where(games: {id: [1,2]})
+      end
+
+      specify 'nested hash terms query' do
+        check_filter subject.where(nested: true, games: {
+          comments: {user_id: 3, source: "mobile"}
+        })
+      end
     end
 
     specify 'together' do
-      check subject.where(
+      check_filter subject.where(
         url_slug:     found['url_slug'],
         salary:       salary_range,
         is_mizuguchi: nil
@@ -74,11 +69,11 @@ describe 'Filters' do
   end
 
   specify 'range filter' do
-    check subject.filter.range(salary: {gte: found['salary']})
+    check_filter subject.filter.range(salary: {gte: found['salary']})
   end
 
   specify 'geo distance filter' do
-    check subject.geo_distance(
+    check_filter subject.geo_distance(
       distance: '1mi',
       coords: [found['coords']['lon'], found['coords']['lat']]
     )

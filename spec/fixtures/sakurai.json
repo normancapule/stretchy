@@ -11,12 +11,30 @@
     {
       "id" : 1,
       "title" : "Super Smash Bros",
-      "platforms" : ["Nintendo 64"]
+      "platforms" : ["Nintendo 64"],
+      "comments" : [
+        {
+          "user_id" : 3,
+          "user_name" : "stacy",
+          "comment" : "yay awesome!",
+          "source" : "mobile"
+        },
+        {
+          "user_id" : 7,
+          "user_name" : "ulysses",
+          "comment" : "how is babby formed",
+          "source" : "web"
+        }
+      ]
     },
     {
       "id" : 2,
       "title" : "Smash Bros Melee",
-      "platforms" : ["GameCube"]
+      "platforms" : ["GameCube"],
+      "likes" : [
+        {"user_id" : 3, "user" : "stacy"},
+        {"user_id" : 7, "user" : "ulysses"}
+      ]
     },
     {
       "id" : 3,
