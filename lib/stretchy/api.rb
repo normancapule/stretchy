@@ -86,12 +86,16 @@ module Stretchy
     end
 
     def where(params = {})
-      add_params params, :filter, :context_nodes
+      subcontext = {filter: true}
+      subcontext[:nested] = params.delete(:nested) if params[:nested]
+      add_params params, subcontext, :context_nodes
     end
 
     def match(params = {})
       if params.is_a? Hash
-        add_params params, :query, :context_nodes
+        subcontext = {query: true}
+        subcontext[:nested] = true if params.delete(:nested)
+        add_params params, subcontext, :context_nodes
       else
         add_params Hash[_all: params], :query, :context_nodes
       end

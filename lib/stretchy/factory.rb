@@ -32,6 +32,14 @@ module Stretchy
       Utils.extract_options!(params, FUNCTION_SCORE_OPTIONS)
     end
 
+    def dotify_params(params, context)
+      if context[:nested]
+        Utils.nestify(params)
+      else
+        Utils.dotify(params)
+      end
+    end
+
     def raw_node(params, context)
       if context[:boost]
         raw_boost_node(params, context)
@@ -43,19 +51,21 @@ module Stretchy
     def raw_boost_node(params, context)
       boost_params       = extract_boost_params!(params)
       context[:fn_score] = extract_function_score_options!(params)
-      context[:boost]    ||= true
-      context[:filter]   ||= true
+      context[:boost]    = true
+      context[:filter]   = true
       json = context[:query] ? {query: params} : params
       Node.new(boost_params.merge(filter: json), context)
     end
 
     def context_nodes(params, context = default_context)
+      subparams = dotify_params(params, context)
+
       if context[:boost]
-        params_to_boost(params, context)
+        params_to_boost(subparams, context)
       elsif context[:query]
-        params_to_queries(params, context)
+        params_to_queries(subparams, context)
       else
-        params_to_filters(params, context)
+        params_to_filters(subparams, context)
       end
     end
 
@@ -81,11 +91,14 @@ module Stretchy
         case val
         when Array
           Node.new({match: {
-            field     => {query: val.join(' '),
-            :operator => :or
-          }}}, context)
+            field => {query: val.join(' '), :operator => :or}
+          }}, context)
         when Range
-          Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
+          Node.new({range: {
+            field => {gte: val.min, lte: val.max}
+          }}, context)
+        when Hash
+          nested(val, field, context)
         else
           Node.new({match: {field => val}}, context)
         end
@@ -99,10 +112,29 @@ module Stretchy
           Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
         when nil
           Node.new({missing: {field: field}}, context)
+        when Hash
+          nested(val, field, context)
         else
           Node.new({terms: {field => Array(val)}}, context)
         end
       end
+    end
+
+    def nested(params, path, context = default_context)
+      type, json = if context[:query]
+        nodes = params_to_queries(params, context)
+        json  = AndCollector.new(nodes, context).json
+        [:query, json]
+      else
+        nodes = params_to_filters(params, context)
+        json  = AndCollector.new(nodes, context).filter_json
+        [:filter, json]
+      end
+
+      Node.new({nested: {
+        path:   path,
+        type => json
+      }}, context)
     end
 
     # https://www.elastic.co/guide/en/elasticsearch/guide/current/proximity-relevance.html

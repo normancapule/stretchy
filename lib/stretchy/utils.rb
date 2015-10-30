@@ -17,8 +17,8 @@ module Stretchy
       # raises error if required parameters are missing
       def require_params!(method, params, *fields)
         raise Errors::InvalidParamsError.new(
-          "#{method} requires at least #{fields.join(' and ')} params",
-          "params found: #{params}"
+          "#{method} requires at least #{fields.join(' and ')} params, but " +
+          "found: #{params}"
         ) if fields.any? {|f| is_empty? params[f] }
 
         true
@@ -27,7 +27,7 @@ module Stretchy
       # generates a hash of specified options,
       # removing them from the original hash
       def extract_options!(params, list)
-        boost_params = Hash[list.map do |opt|
+        output = Hash[list.map do |opt|
           [opt, params.delete(opt)]
         end].keep_if {|k,v| !is_empty?(v)}
       end
@@ -39,7 +39,33 @@ module Stretchy
 
       # coerces ids to integers, unless they contain non-integers
       def coerce_id(id)
-        id =~ /\d+/ ? id.to_i : id
+        id =~ /^\d+$/ ? id.to_i : id
+      end
+
+      def dotify(hash, prefixes = [])
+        hash.reduce({}) do |memo, kv|
+          key, val    = kv
+          subprefixes = (prefixes + [key])
+          prefix      = subprefixes.join('.')
+          if val.is_a? Hash
+            memo.merge(dotify(val, subprefixes))
+          else
+            memo.merge(prefix => val)
+          end
+        end
+      end
+
+      def nestify(hash, prefixes = [])
+        hash.reduce({}) do |memo, kv|
+          key, val = kv
+          subprefixes = (prefixes + [key])
+          prefix = subprefixes.join('.')
+          if val.is_a? Hash
+            memo.merge(prefix => nestify(val, subprefixes))
+          else
+            memo.merge(prefix => val)
+          end
+        end
       end
     end
 
