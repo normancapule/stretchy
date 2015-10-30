@@ -9,7 +9,7 @@ module Stretchy
     include Enumerable
     include Utils::Methods
 
-    attr_reader :collector, :opts, :root, :context
+    attr_reader :collector, :opts, :root, :body, :context
 
     delegate [
       :total,
@@ -30,6 +30,7 @@ module Stretchy
       @opts       = opts
       @collector  = AndCollector.new(opts[:nodes] || [], query: true)
       @root       = opts[:root]     || {}
+      @body       = opts[:body]     || {}
       @context    = opts[:context]  || {}
     end
 
@@ -77,7 +78,11 @@ module Stretchy
     end
 
     def aggs(params = {})
-      add_root aggs: params
+      add_body aggs: params
+    end
+
+    def highlight(params = {})
+      add_body highlight: params
     end
 
     def where(params = {})
@@ -159,12 +164,7 @@ module Stretchy
 
     def request
       @request ||= begin
-        base        = root.dup
-        sub         = {query: collector.as_json}
-        agg         = base.delete(:aggs) || {}
-        sub[:aggs]  = agg if agg.any?
-
-        base.merge(body: sub)
+        root.merge(body: body.merge(query: collector.as_json))
       end
     end
 
@@ -217,6 +217,7 @@ module Stretchy
         self.class.new(opts.merge(
           nodes: collector.nodes + Array(additional),
           root:  root,
+          body:  body,
           context: {}
         ))
       end
@@ -225,6 +226,16 @@ module Stretchy
         self.class.new(opts.merge(
           nodes:    collector.nodes,
           root:     root.merge(options),
+          body:     body,
+          context:  context
+        ))
+      end
+
+      def add_body(options = {})
+        self.class.new(opts.merge(
+          nodes:    collector.nodes,
+          root:     root,
+          body:     body.merge(options),
           context:  context
         ))
       end
@@ -233,6 +244,7 @@ module Stretchy
         self.class.new(opts.merge(
           nodes:   collector.nodes,
           root:    root,
+          body:    body,
           context: context.merge(args_to_context(*args))
         ))
       end
