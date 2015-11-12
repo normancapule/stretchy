@@ -13,6 +13,20 @@ describe 'Boosts', :integration do
     check_boost subject.boost.where(url_slug: found['url_slug'])
   end
 
+  specify 'where with weight' do
+    check_boost subject.boost.where(url_slug: found['url_slug'], weight: 100)
+  end
+
+  specify 'match with weight' do
+    check_boost subject.boost.match(name: found['name'], weight: 100)
+  end
+
+  specify 'nested where with weight' do
+    check_boost subject.boost.where(nested: true, games: {
+      comments: {user_id: 3, source: "mobile"}
+    })
+  end
+
   specify 'match' do
     check_boost subject.boost.match(_all: found['name'])
   end
