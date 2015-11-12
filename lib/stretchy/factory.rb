@@ -119,7 +119,6 @@ module Stretchy
     end
 
     def nested(params, path, context = default_context)
-      pp [:nested, params]
       type, json = if context[:query]
         nodes = params_to_queries(params, context)
         json  = AndCollector.new(nodes, context).json
