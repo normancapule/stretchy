@@ -1,19 +1,11 @@
 module Stretchy
   module Factory
 
-    DEFAULT_WEIGHT  = 1.5
-    DEFAULT_SLOP    = 50
-    BOOST_OPTIONS   = [
-      :filter,
-      :function,
-      :weight
-    ]
-    FUNCTION_SCORE_OPTIONS = [
-      :boost,
-      :max_boost,
-      :score_mode,
-      :boost_mode,
-      :min_score
+    DEFAULT_WEIGHT          = 1.5
+    DEFAULT_SLOP            = 50
+    BOOST_OPTIONS           = [:filter, :function, :weight]
+    FUNCTION_SCORE_OPTIONS  = [
+      :boost, :max_boost, :score_mode, :boost_mode, :min_score
     ]
 
     module_function

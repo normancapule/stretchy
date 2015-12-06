@@ -12,18 +12,8 @@ module Stretchy
     attr_reader :collector, :opts, :root, :body, :context
 
     delegate [
-      :total,
-      :total_count,
-      :length,
-      :size,
-      :total_pages,
-      :results,
-      :hits,
-      :to_a,
-      :ids,
-      :scores,
-      :explanations,
-      :aggregations
+      :total, :total_count, :length, :size, :total_pages, :results,
+      :hits, :to_a, :ids, :scores, :explanations, :aggregations
     ] => :results_obj
 
     def initialize(opts = {})
