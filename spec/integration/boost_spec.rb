@@ -54,13 +54,18 @@ describe 'Boosts', :integration do
   end
 
   describe 'random value' do
+    let(:seed) { 6 }
+
     # fortunately, 'random' has a seed
+    # unfortunately, when elasticsearch version changes, we may have
+    # to pick a new seed here
+
     specify 'by seed' do
-      check_boost subject.boost.random(found['id'])
+      check_boost subject.boost.random(seed)
     end
 
     specify 'with weight' do
-      check_boost subject.boost.random(seed: found['id'], weight: 100)
+      check_boost subject.boost.random(seed: seed, weight: 100)
     end
   end
 

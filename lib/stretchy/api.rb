@@ -130,12 +130,11 @@ module Stretchy
     end
 
     def range(params = {})
-      require_context!
       add_params params, nil, :range_node
     end
 
     def geo_distance(params = {})
-      add_params params, :filter, :geo_distance_node
+      add_params params, nil, :geo_distance_node
     end
 
     def boost(params = {}, options = {})
@@ -143,7 +142,7 @@ module Stretchy
 
       subcontext = context.merge(boost: true)
       if params.is_a? self.class
-        boost_json = options.merge(filter: params.filter_node.json)
+        boost_json = options.merge(filter: params.json)
         add_nodes Node.new(boost_json, subcontext)
       else
         add_nodes Factory.raw_boost_node(params, subcontext)
@@ -193,11 +192,6 @@ module Stretchy
     end
 
     private
-
-      def require_context!
-        return true if context?(:query) || context?(:filter)
-        raise 'You must specify either query or filter context'
-      end
 
       def args_to_context(*args)
         args.reduce({}) do |ctx, item|

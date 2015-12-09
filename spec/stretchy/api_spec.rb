@@ -61,48 +61,6 @@ module Stretchy
           expect(page).to eq(2)
         end
       end
-
-    end
-
-    describe '#filter_node' do
-      subject { api.match(name: 'sakurai') }
-
-      it 'does build response before checking with collector' do
-        expect_any_instance_of(API).not_to receive(:results_obj)
-        subject.filter_node.json
-      end
-
-      describe 'with boosts' do
-        subject { api.match(name: 'sakurai').boost.match(name: 'masahiro') }
-
-        it 'returns function score query filter' do
-          expect(subject.filter_json[:query][:function_score]).not_to be_nil
-        end
-      end
-
-      describe 'with query' do
-        subject { api.match(name: 'sakurai') }
-
-        it 'returns query filter' do
-          expect(subject.filter_json[:query][:match]).not_to be_nil
-        end
-      end
-
-      describe 'with only filters' do
-        subject { api.where(id: 1) }
-
-        it 'returns a filter' do
-          expect(subject.filter_json[:terms]).not_to be_nil
-        end
-      end
-    end
-
-    describe '#opts' do
-      subject { described_class.new(one: 1, two: 2).match(name: 'sakurai')}
-
-      it 'preserves unknown input options' do
-        expect(subject.opts).to include(one: 1, two: 2)
-      end
     end
   end
 end

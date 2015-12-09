@@ -1,5 +1,5 @@
 elastic:
-  image: elasticsearch:1.7
+  image: elasticsearch:2.1
 web:
   build: .
   command: bundle exec rake
