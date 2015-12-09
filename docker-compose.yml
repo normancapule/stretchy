@@ -1,0 +1,13 @@
+elastic:
+  image: elasticsearch:1.7
+web:
+  build: .
+  command: bundle exec rake
+  environment:
+    ELASTICSEARCH_URL: 'elastic:9200'
+  volumes:
+    - .:/stretchy
+  ports:
+    - "3000:3000"
+  links:
+    - elastic
