@@ -42,15 +42,11 @@ module Stretchy
     private
 
       def query_node
-        if should_boolify? query_nodes
+        if query_nodes.size > 1 || multicontext?(query_nodes)
           compile_bool query_nodes
         else
           query_nodes.first
         end
-      end
-
-      def should_boolify?(node_arr)
-        Array(node_arr).size > 1 || multicontext?(node_arr)
       end
 
       def multicontext?(node_arr)
