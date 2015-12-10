@@ -11,19 +11,11 @@ module Stretchy
 
     attr_reader :collector, :opts, :root, :body, :context
 
+    delegate [:with_context, :json, :as_json] => :collector
+
     delegate [
-      :total,
-      :total_count,
-      :length,
-      :size,
-      :total_pages,
-      :results,
-      :hits,
-      :to_a,
-      :ids,
-      :scores,
-      :explanations,
-      :aggregations
+      :total, :total_count, :length, :size, :total_pages, :results, :hits,
+      :to_a, :ids, :scores, :explanations, :aggregations, :each
     ] => :results_obj
 
     def initialize(opts = {})
@@ -138,7 +130,7 @@ module Stretchy
     end
 
     def boost(params = {}, options = {})
-      return add_context(:boost) unless params.any?
+      return add_context(:boost) if Utils.is_empty? params
 
       subcontext = context.merge(boost: true)
       if params.is_a? self.class
@@ -181,14 +173,6 @@ module Stretchy
 
     def count
       results_obj.ids.count
-    end
-
-    def method_missing(method, *args, &block)
-      if collector.respond_to?(method)
-        collector.send(method, *args, &block)
-      else
-        super
-      end
     end
 
     private
