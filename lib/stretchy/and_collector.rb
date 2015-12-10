@@ -24,10 +24,8 @@ module Stretchy
     def node
       @node ||= if boost_nodes.any?
         function_score_node
-      elsif query_nodes.size > 1
-        filtered_query_node
       elsif query_nodes.any?
-        single_query_node
+        query_node
       else
         Node.new({match_all: {}}, context)
       end
@@ -43,54 +41,41 @@ module Stretchy
 
     private
 
-      def compile_nodes(node_arr)
-        if node_arr.size > 1 ||
-           node_arr.any?{|n| n.context?(:must_not) || n.context?(:should)}
-
-          compile_bool(node_arr)
+      def query_node
+        if should_boolify? query_nodes
+          compile_bool query_nodes
         else
-          node_arr.first
+          query_nodes.first
         end
+      end
+
+      def should_boolify?(node_arr)
+        Array(node_arr).size > 1 || multicontext?(node_arr)
+      end
+
+      def multicontext?(node_arr)
+        Array(node_arr).any? {|n| n.context?(:must_not) || n.context?(:should) }
       end
 
       def compile_bool(bool_nodes)
         split_nodes = split_nodes_for_bool(bool_nodes)
-        bool_json = {}
-        if split_nodes[:should_not].size > 0
-          bool_json[:should] = [
-            {
-              bool: {
-                must:     split_nodes[:should].map(&:as_json),
-                must_not: split_nodes[:should_not].map(&:as_json)
-              }
-            }
-          ]
-        else
-          bool_json[:should] = split_nodes[:should].map(&:as_json)
+        refined = bool_ctx.each_with_object(split_nodes) do |k, hash|
+          hash[k] = Array(compile_bool(hash[k])) if multicontext? hash[k]
         end
-        bool_json[:must_not] = split_nodes[:must_not].map(&:as_json)
-        bool_json[:must]     = split_nodes[:must].map(&:as_json)
+        bool_json = Hash[refined.map{|k,v| [k, v.map(&:as_json)] }]
         Node.new(bool: bool_json)
       end
 
+      def bool_ctx
+        [:filter, :must_not, :should]
+      end
+
       def split_nodes_for_bool(bool_nodes)
-        split_nodes = {must: [], must_not: [], should: [], should_not: []}
-        bool_nodes.each do |n|
-          if n.context?(:should)
-            if n.context?(:must_not)
-              split_nodes[:should_not] << n
-            else
-              split_nodes[:should] << n
-            end
-          else
-            if n.context?(:must_not)
-              split_nodes[:must_not] << n
-            else
-              split_nodes[:must] << n
-            end
-          end
+        bool_nodes.each_with_object({}) do |n, hash|
+          key = bool_ctx.find{|c| n.context? c } || :must
+          hash[key] ||= []
+          hash[key] << Node.new(n.json, n.context.merge(key => nil))
         end
-        split_nodes
       end
 
       def compile_boost_functions
@@ -109,23 +94,9 @@ module Stretchy
       def function_score_node
         function_score_json = compile_function_score_options
         function_score_json[:functions] = compile_boost_functions
-
-        if query_nodes.any?
-          function_score_json[:query] = filtered_query_node.json
-        end
+        function_score_json[:query] = query_node.json if query_nodes.any?
 
         Node.new({function_score: function_score_json}, context)
-      end
-
-      def filtered_query_node
-        filtered_json = {}
-        q = compile_nodes(query_nodes)
-        filtered_json[:query]   = q.json  if q
-        Node.new({filtered: filtered_json}, context)
-      end
-
-      def single_query_node
-        Node.new(compile_nodes(query_nodes).json, context)
       end
 
   end
