@@ -11,19 +11,11 @@ module Stretchy
 
     attr_reader :collector, :opts, :root, :body, :context
 
+    delegate [:with_context, :json, :as_json] => :collector
+
     delegate [
-      :total,
-      :total_count,
-      :length,
-      :size,
-      :total_pages,
-      :results,
-      :hits,
-      :to_a,
-      :ids,
-      :scores,
-      :explanations,
-      :aggregations
+      :total, :total_count, :length, :size, :total_pages, :results, :hits,
+      :to_a, :ids, :scores, :explanations, :aggregations, :each
     ] => :results_obj
 
     def initialize(opts = {})
@@ -130,20 +122,19 @@ module Stretchy
     end
 
     def range(params = {})
-      require_context!
       add_params params, nil, :range_node
     end
 
     def geo_distance(params = {})
-      add_params params, :filter, :geo_distance_node
+      add_params params, nil, :geo_distance_node
     end
 
     def boost(params = {}, options = {})
-      return add_context(:boost) unless params.any?
+      return add_context(:boost) if Utils.is_empty? params
 
       subcontext = context.merge(boost: true)
       if params.is_a? self.class
-        boost_json = options.merge(filter: params.filter_node.json)
+        boost_json = options.merge(filter: params.json)
         add_nodes Node.new(boost_json, subcontext)
       else
         add_nodes Factory.raw_boost_node(params, subcontext)
@@ -184,20 +175,7 @@ module Stretchy
       results_obj.ids.count
     end
 
-    def method_missing(method, *args, &block)
-      if collector.respond_to?(method)
-        collector.send(method, *args, &block)
-      else
-        super
-      end
-    end
-
     private
-
-      def require_context!
-        return true if context?(:query) || context?(:filter)
-        raise 'You must specify either query or filter context'
-      end
 
       def args_to_context(*args)
         args.reduce({}) do |ctx, item|

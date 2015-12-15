@@ -1,9 +1,9 @@
 ---
-ruby_version: ruby-2.2.2
+ruby_version: ruby-2.2.3
 bundler_version: 1.9.4
 test_pattern:
   - spec/**/*_spec.rb
 elasticsearch:
-  version: '1.6'
+  version: '2.1'
 java:
   java_version: java-7-openjdk

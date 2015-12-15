@@ -4,10 +4,13 @@ describe 'Highlights' do
   let(:found) { fixture(:sakurai) }
   let(:not_found) { fixture(:mizuguchi) }
   let(:extra) { fixture(:suda) }
+  let(:name) { found['name'].split.first }
 
-  subject { Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE)
-    .match(found['name']).highlight(fields: {name: {}})
-  }
+  subject do
+    Stretchy.query(index: SPEC_INDEX, type: FIXTURE_TYPE)
+      .match(name: name)
+      .highlight(fields: {name: {}})
+  end
 
   it 'returns results with highlights' do
     expect(subject.results.first['highlight']).to be_a Hash
