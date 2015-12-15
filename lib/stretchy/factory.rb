@@ -58,9 +58,10 @@ module Stretchy
     end
 
     def context_nodes(params, context = default_context)
+      # binding.pry
       if context[:boost]
         params_to_boost(params, context)
-      elsif context[:filter]
+      elsif context[:filter] && !context[:query]
         params_to_filters(dotify_params(params, context), context)
       else
         params_to_queries(dotify_params(params, context), context)
@@ -74,7 +75,7 @@ module Stretchy
       nodes               = context_nodes(params, subcontext)
       collector           = AndCollector.new(nodes, subcontext)
 
-      Node.new(boost_params.merge(filter: {query: collector.json}), context)
+      Node.new(boost_params.merge(filter: collector.json), context)
     end
 
     def params_to_queries(params, context = default_context)
@@ -112,7 +113,11 @@ module Stretchy
     end
 
     def nested(params, path, context = default_context)
-      nodes = params_to_queries(params, context)
+      nodes = if context[:filter] && !context[:query]
+        params_to_filters(params, context)
+      else
+        params_to_queries(params, context)
+      end
       json  = AndCollector.new(nodes, context).json
 
       Node.new({nested: {
