@@ -1,13 +1,24 @@
-elastic:
-  image: elasticsearch:2.1
-web:
-  build: .
-  command: bundle exec rake
-  environment:
-    ELASTICSEARCH_URL: 'elastic:9200'
-  volumes:
-    - .:/stretchy
-  ports:
-    - "3000:3000"
-  links:
-    - elastic
+version: '2'
+services:
+  elastictwo:
+    image: elasticsearch:2-alpine
+  elasticfive:
+    image: elasticsearch:5-alpine
+  testtwo:
+    build: .
+    command: bundle exec rake
+    environment:
+      ELASTICSEARCH_URL: 'elastictwo:9200'
+    volumes:
+      - .:/stretchy
+    links:
+      - elastictwo
+  testfive:
+    build: .
+    command: bundle exec rake
+    environment:
+      ELASTICSEARCH_URL: 'elasticfive:9200'
+    volumes:
+      - .:/stretchy
+    links:
+      - elastictwo

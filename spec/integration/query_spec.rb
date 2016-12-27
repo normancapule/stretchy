@@ -61,7 +61,7 @@ describe 'Queries', :integration do
 
   specify 'more_like' do
     check_query subject.more_like(
-      like_text:        found['name'],
+      like:             found['name'],
       min_doc_freq:     1,
       min_term_freq:    1
     )

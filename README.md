@@ -219,7 +219,7 @@ Performs a query for the given string anywhere in the document. At least one of 
 api = api.more_like(ids: [1, 2, 3])
          .more_like(docs: other_search.results)
          .more_like(
-           like_text: 'puppies and kittens are great',
+           like: 'puppies and kittens are great',
            fields: ['about_me']
          )
 ```

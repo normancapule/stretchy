@@ -53,8 +53,7 @@ module Stretchy
       context[:fn_score] = extract_function_score_options!(params)
       context[:boost]    = true
       context[:filter]   = true
-      json = context[:query] ? {query: params} : params
-      Node.new(boost_params.merge(filter: json), context)
+      Node.new(boost_params.merge(filter: params), context)
     end
 
     def context_nodes(params, context = default_context)
@@ -103,7 +102,8 @@ module Stretchy
         when Range
           Node.new({range: {field => {gte: val.min, lte: val.max}}}, context)
         when nil
-          Node.new({missing: {field: field}}, context)
+          nil_ctx = context.merge(must_not: true)
+          Node.new({exists: {field: field}}, nil_ctx)
         when Hash
           nested(val, field, context)
         else

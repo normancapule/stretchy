@@ -66,8 +66,10 @@ module Stretchy
     end
 
     def fields(*list)
-      add_root fields: list
+      add_root _source: list
     end
+
+    alias :source :fields
 
     def aggs(params = {})
       add_body aggs: params
