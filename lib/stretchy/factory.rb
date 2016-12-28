@@ -57,7 +57,6 @@ module Stretchy
     end
 
     def context_nodes(params, context = default_context)
-      # binding.pry
       if context[:boost]
         params_to_boost(params, context)
       elsif context[:filter] && !context[:query]
