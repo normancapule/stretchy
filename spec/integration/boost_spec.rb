@@ -100,6 +100,17 @@ describe 'Boosts', :integration do
         .boost.match(_all: 'video', weight: 1000)
       expect(q.scores.all?{|k,s| s < 1000}).to eq(true)
     end
+
+    specify 'without boost functions' do
+      q = subject.boost(score_mode: :min)
+        .boost.match(_all: 'game', weight: 2)
+      expect(q.request[:body][:query][:function_score][:functions].count).to eq(1)
+    end
+
+    specify 'with only options, no functions' do
+      q = subject.boost(score_mode: :min)
+      expect(q.request[:body][:query][:function_score]).to be_nil
+    end
   end
 
 end

@@ -23,9 +23,7 @@ module Stretchy
     end
 
     def extract_boost_params!(params)
-      boost_params = Utils.extract_options!(params, BOOST_OPTIONS)
-      boost_params = {weight: DEFAULT_WEIGHT} unless boost_params.any?
-      boost_params
+      Utils.extract_options!(params, BOOST_OPTIONS)
     end
 
     def extract_function_score_options!(params)
@@ -53,7 +51,8 @@ module Stretchy
       context[:fn_score] = extract_function_score_options!(params)
       context[:boost]    = true
       context[:filter]   = true
-      Node.new(boost_params.merge(filter: params), context)
+      boost_params.merge!(filter: params) unless Utils.is_empty? params
+      Node.new(boost_params, context)
     end
 
     def context_nodes(params, context = default_context)
@@ -73,7 +72,12 @@ module Stretchy
       nodes               = context_nodes(params, subcontext)
       collector           = AndCollector.new(nodes, subcontext)
 
-      Node.new(boost_params.merge(filter: collector.json), context)
+      boost_params.merge!(filter: collector.json) if collector.any?
+      if boost_params.count == 1 && boost_params.key?(:filter)
+        boost_params[:weight] = DEFAULT_WEIGHT
+      end
+
+      Node.new(boost_params, context)
     end
 
     def params_to_queries(params, context = default_context)

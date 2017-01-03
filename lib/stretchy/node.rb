@@ -9,6 +9,10 @@ module Stretchy
       @context = context
     end
 
+    def empty?
+      !@json.any?
+    end
+
     def context?(*args)
       args.all? {|c| !!context[c] }
     end
