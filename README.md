@@ -436,7 +436,7 @@ Included in the Results object for Kaminari compatibility.
 
 ## Development
 
-After checking out the repo, run `bundle install` to install dependencies. Then, run `pry` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bundle install` to install dependencies. Then, run `pry` for an interactive prompt that will allow you to experiment. Run specs with `rspec`
 
 ## Contributing
 
