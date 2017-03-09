@@ -22,7 +22,7 @@ module Stretchy
     end
 
     def node
-      @node ||= if boost_nodes.any?
+      @node ||= if function_score_node?
         function_score_node
       elsif query_nodes.any?
         query_node
@@ -37,6 +37,10 @@ module Stretchy
 
     def boost_nodes
       @boost_nodes ||= nodes.select {|n| n.context? :boost }
+    end
+
+    def function_score_node?
+      boost_nodes.reject { |n| n.empty? }.any?
     end
 
     private
@@ -76,7 +80,7 @@ module Stretchy
 
       def compile_boost_functions
         boost_nodes.map do |n|
-          next unless n.json.any?
+          next if n.empty?
           n.json
         end.compact
       end

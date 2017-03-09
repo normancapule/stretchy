@@ -1,5 +1,6 @@
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 require 'stretchy'
+require 'faraday'
 require 'awesome_print'
 require 'pry'
 
@@ -14,6 +15,12 @@ end
 
 RSpec.configure do |config|
   config.before(:suite) do
+    # wait & retry for Docker-based testing
+    Stretchy.client = Elasticsearch::Client.new(
+      retry_on_failure: 5,
+      request_timeout:  5 * 60
+    )
+
     Stretchy.delete_index(SPEC_INDEX)
     Stretchy.create_index(SPEC_INDEX, body: {
       mappings: FIXTURES[:mappings_stub]
